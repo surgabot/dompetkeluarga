@@ -35,6 +35,7 @@ import androidx.compose.ui.window.DialogProperties
 import coil.compose.AsyncImage
 import com.family.financeapp.model.FamilyMemory
 import com.family.financeapp.ui.components.BilibiliVideoPlayerDialog
+import com.family.financeapp.ui.components.EditMemoryDialog
 import com.family.financeapp.ui.theme.*
 import com.family.financeapp.viewmodel.FinanceUiState
 
@@ -48,6 +49,9 @@ fun FamilyMemoriesScreen(
     uiState: FinanceUiState,
     onNavigateBack: () -> Unit,
     onAddMemory: (String, String, String, String, Uri, String) -> Unit,
+    onEditMemory: (FamilyMemory) -> Unit = {},
+    onSaveUpdateMemory: (FamilyMemory, Uri?, String?) -> Unit = { _, _, _ -> },
+    onDismissEditDialog: () -> Unit = {},
     onDeleteMemory: (String) -> Unit,
     onPlayVideo: (String, String) -> Unit,
     onDismissVideoPlayer: () -> Unit,
@@ -86,6 +90,16 @@ fun FamilyMemoriesScreen(
                 onAddMemory(title, desc, date, cat, uri, type)
                 showAddDialog = false
             }
+        )
+    }
+
+    // Dialog Sunting & Perbarui Kenangan yang Sudah Ada
+    if (uiState.editingMemory != null) {
+        EditMemoryDialog(
+            memory = uiState.editingMemory,
+            onDismissRequest = onDismissEditDialog,
+            onSaveUpdate = onSaveUpdateMemory,
+            onDelete = onDeleteMemory
         )
     }
 
@@ -273,6 +287,7 @@ fun FamilyMemoriesScreen(
                     FamilyMemoryCard(
                         memory = memory,
                         onPlayVideoClick = onPlayVideo,
+                        onEditClick = { onEditMemory(memory) },
                         onDeleteClick = { onDeleteMemory(memory.id) }
                     )
                 }
@@ -290,6 +305,7 @@ fun FamilyMemoriesScreen(
 fun FamilyMemoryCard(
     memory: FamilyMemory,
     onPlayVideoClick: (String, String) -> Unit,
+    onEditClick: () -> Unit = {},
     onDeleteClick: () -> Unit
 ) {
     Card(
@@ -319,9 +335,27 @@ fun FamilyMemoryCard(
                     Text("•  ${memory.dateText}", fontSize = 11.sp, color = TextGray)
                 }
 
-                // Tombol Hapus Kenangan
-                IconButton(onClick = onDeleteClick, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = "Hapus", tint = TextMuted, modifier = Modifier.size(16.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Tombol Sunting Kenangan
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(KotlinPurple.copy(alpha = 0.25f))
+                            .border(1.dp, KotlinPurple.copy(alpha = 0.5f), RoundedCornerShape(6.dp))
+                            .clickable { onEditClick() }
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Edit, contentDescription = "Sunting", tint = KotlinCyan, modifier = Modifier.size(11.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("Sunting", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = KotlinCyan)
+                        }
+                    }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    // Tombol Hapus Kenangan
+                    IconButton(onClick = onDeleteClick, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.DeleteOutline, contentDescription = "Hapus", tint = TextMuted, modifier = Modifier.size(16.dp))
+                    }
                 }
             }
 

@@ -137,6 +137,16 @@ fun AppNavigation(viewModel: FinanceViewModel) {
             DashboardScreen(
                 uiState = uiState,
                 onSelectWallet = { walletId -> viewModel.selectWallet(walletId) },
+                onEditWallet = { wallet -> viewModel.setEditingWallet(wallet) },
+                onAddNewWalletClick = { viewModel.setIsAddingNewWallet(true) },
+                onSaveWallet = { id, name, bal, emoji, isPrimary ->
+                    viewModel.saveWallet(id, name, bal, emoji, isPrimary)
+                },
+                onDeleteWallet = { id -> viewModel.deleteWallet(id) },
+                onDismissWalletDialog = {
+                    viewModel.setEditingWallet(null)
+                    viewModel.setIsAddingNewWallet(false)
+                },
                 onAddTransactionClick = { navController.navigate("add_transaction") },
                 onViewReportClick = { navController.navigate("report") },
                 onViewMemoriesClick = { navController.navigate("memories") },
@@ -156,6 +166,11 @@ fun AppNavigation(viewModel: FinanceViewModel) {
                 onAddMemory = { title, desc, date, cat, uri, type ->
                     viewModel.addFamilyMemory(title, desc, date, cat, uri, type)
                 },
+                onEditMemory = { memory -> viewModel.setEditingMemory(memory) },
+                onSaveUpdateMemory = { memory, uri, type ->
+                    viewModel.updateFamilyMemory(memory, uri, type)
+                },
+                onDismissEditDialog = { viewModel.setEditingMemory(null) },
                 onDeleteMemory = { memId -> viewModel.deleteFamilyMemory(memId) },
                 onPlayVideo = { url, title -> viewModel.playVideo(url, title) },
                 onDismissVideoPlayer = { viewModel.dismissVideoPlayer() }

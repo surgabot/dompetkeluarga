@@ -47,3 +47,27 @@ class DeleteFamilyMemoryUseCase(private val repository: FinanceRepository) {
         return repository.deleteFamilyMemory(groupId, memoryId)
     }
 }
+
+class UpdateFamilyMemoryUseCase(private val repository: FinanceRepository) {
+    suspend operator fun invoke(
+        groupId: String,
+        memory: FamilyMemory,
+        newMediaUri: Uri? = null,
+        newMediaType: String? = null
+    ): Result<Unit> {
+        var finalUrl = memory.mediaUrl
+        var finalType = memory.mediaType
+        if (newMediaUri != null) {
+            val uploadRes = repository.uploadMedia(newMediaUri, "memories")
+            finalUrl = uploadRes.getOrDefault(newMediaUri.toString())
+            if (newMediaType != null) {
+                finalType = newMediaType
+            }
+        }
+        val updated = memory.copy(
+            mediaUrl = finalUrl,
+            mediaType = finalType
+        )
+        return repository.updateFamilyMemory(groupId, updated)
+    }
+}

@@ -28,8 +28,10 @@ import com.family.financeapp.model.MilestoneStatus
 import com.family.financeapp.model.RoadmapMilestone
 import com.family.financeapp.model.Transaction
 import com.family.financeapp.model.TransactionType
+import com.family.financeapp.model.Wallet
 import com.family.financeapp.ui.components.BilibiliVideoPlayerDialog
 import com.family.financeapp.ui.components.EditTransactionDialog
+import com.family.financeapp.ui.components.EditWalletDialog
 import com.family.financeapp.ui.theme.*
 import com.family.financeapp.viewmodel.FinanceUiState
 import java.text.NumberFormat
@@ -45,6 +47,11 @@ fun formatRupiah(amount: Double): String {
 fun DashboardScreen(
     uiState: FinanceUiState,
     onSelectWallet: (String) -> Unit = {},
+    onEditWallet: (Wallet) -> Unit = {},
+    onAddNewWalletClick: () -> Unit = {},
+    onSaveWallet: (String, String, Double, String, Boolean) -> Unit = { _, _, _, _, _ -> },
+    onDeleteWallet: (String) -> Unit = {},
+    onDismissWalletDialog: () -> Unit = {},
     onAddTransactionClick: () -> Unit,
     onViewReportClick: () -> Unit,
     onViewMemoriesClick: () -> Unit = {},
@@ -77,6 +84,16 @@ fun DashboardScreen(
             onSaveUpdate = onSaveUpdateTransaction,
             onDelete = onDeleteTransaction,
             onResetMedia = onResetMedia
+        )
+    }
+
+    // 2.5 Dialog Edit & Tambah Dompet Kas / Alokasi Aset
+    if (uiState.editingWallet != null || uiState.isAddingNewWallet) {
+        EditWalletDialog(
+            wallet = uiState.editingWallet,
+            onDismissRequest = onDismissWalletDialog,
+            onSaveWallet = onSaveWallet,
+            onDeleteWallet = onDeleteWallet
         )
     }
 
@@ -191,12 +208,28 @@ fun DashboardScreen(
                             Spacer(modifier = Modifier.height(14.dp))
 
                             Text("Total Aset Bersih Keluarga (Net Worth):", fontSize = 12.sp, color = TextGray)
-                            Text(
-                                text = formatRupiah(uiState.totalBalance),
-                                fontSize = 28.sp,
-                                fontWeight = FontWeight.Black,
-                                color = TextWhite
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = formatRupiah(uiState.totalBalance),
+                                    fontSize = 28.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = TextWhite
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(KotlinPurple.copy(alpha = 0.25f))
+                                        .border(1.dp, KotlinPurple.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                                        .clickable { onAddNewWalletClick() }
+                                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                                ) {
+                                    Text("+ Tambah Aset", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = KotlinCyan)
+                                }
+                            }
 
                             Spacer(modifier = Modifier.height(14.dp))
 
@@ -238,7 +271,24 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("PILIHAN DOMPET KAS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextGray, letterSpacing = 1.sp)
+                    Column {
+                        Text("PILIHAN DOMPET KAS & ASET", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextGray, letterSpacing = 1.sp)
+                        Text("Ketuk untuk memilih • Tekan [✎ Edit] untuk ubah saldo", fontSize = 10.sp, color = KotlinCyan)
+                    }
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(KotlinPurple.copy(alpha = 0.25f))
+                            .border(1.dp, KotlinPurple.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .clickable { onAddNewWalletClick() }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = KotlinCyan, modifier = Modifier.size(12.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("Tambah Pos", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = KotlinCyan)
+                        }
+                    }
                 }
                 Spacer(modifier = Modifier.height(6.dp))
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -260,10 +310,43 @@ fun DashboardScreen(
                                     shape = RoundedCornerShape(14.dp)
                                 )
                         ) {
-                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
-                                Text("${wallet.iconEmoji} ${wallet.name}", fontSize = 12.sp, color = if (isSelected) TextWhite else TextGray, fontWeight = FontWeight.Medium)
-                                Spacer(modifier = Modifier.height(2.dp))
+                            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("${wallet.iconEmoji} ${wallet.name}", fontSize = 12.sp, color = if (isSelected) TextWhite else TextGray, fontWeight = FontWeight.Medium)
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(KotlinPurple.copy(alpha = 0.25f))
+                                            .clickable { onEditWallet(wallet) }
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("✎ Edit", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = KotlinCyan)
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(3.dp))
                                 Text(formatRupiah(wallet.balance), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (isSelected) KotlinCyan else TextWhite)
+                            }
+                        }
+                    }
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = KmpCardBg),
+                            modifier = Modifier
+                                .clickable { onAddNewWalletClick() }
+                                .border(1.dp, KotlinPurple.copy(alpha = 0.4f), RoundedCornerShape(14.dp))
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(Icons.Default.AddCircleOutline, contentDescription = null, tint = KotlinCyan, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Tambah Pos", fontSize = 11.sp, color = KotlinCyan, fontWeight = FontWeight.Bold)
                             }
                         }
                     }

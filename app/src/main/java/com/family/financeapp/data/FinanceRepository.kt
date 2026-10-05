@@ -6,6 +6,7 @@ import com.family.financeapp.model.FamilyMemory
 import com.family.financeapp.model.Transaction
 import com.family.financeapp.model.TransactionCategory
 import com.family.financeapp.model.TransactionType
+import com.family.financeapp.model.Wallet
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
@@ -24,6 +25,15 @@ class FinanceRepository(
         FirebaseFirestore.getInstance()
     }
 ) {
+    // Koleksi Dompet Kas & Alokasi Keluarga
+    private val localWallets = MutableStateFlow<List<Wallet>>(
+        listOf(
+            Wallet("w1", "Kas Harian", 12500000.0, isPrimary = true, iconEmoji = "👛"),
+            Wallet("w2", "Tabungan Roadmap", 38500000.0, isPrimary = false, iconEmoji = "🎯"),
+            Wallet("w3", "Dana Darurat", 30000000.0, isPrimary = false, iconEmoji = "🛡️")
+        )
+    )
+
     // Koleksi Folder Kenangan Keluarga (Foto & Video)
     private val localMemories = MutableStateFlow<List<FamilyMemory>>(
         listOf(
@@ -196,6 +206,18 @@ class FinanceRepository(
         // Simpan ke memori lokal
         localTransactions.value = listOf(newTx) + localTransactions.value
 
+        // Perbarui saldo dompet terkait
+        localWallets.value = localWallets.value.map { w ->
+            if (w.id == newTx.walletId || (newTx.walletId.isBlank() && w.isPrimary)) {
+                val newBal = if (newTx.type == TransactionType.INCOME) {
+                    w.balance + newTx.amount
+                } else {
+                    (w.balance - newTx.amount).coerceAtLeast(0.0)
+                }
+                w.copy(balance = newBal)
+            } else w
+        }
+
         return try {
             firestore.collection("family_groups")
                 .document(groupId)
@@ -231,13 +253,108 @@ class FinanceRepository(
 
     // 3.2 Hapus Transaksi dari Dompet
     suspend fun deleteTransaction(groupId: String, transactionId: String): Result<Unit> {
+        val target = localTransactions.value.find { it.id == transactionId }
         localTransactions.value = localTransactions.value.filter { it.id != transactionId }
+
+        // Kembalikan saldo dompet yang bersangkutan
+        if (target != null) {
+            localWallets.value = localWallets.value.map { w ->
+                if (w.id == target.walletId || (target.walletId.isBlank() && w.isPrimary)) {
+                    val reversedBal = if (target.type == TransactionType.INCOME) {
+                        (w.balance - target.amount).coerceAtLeast(0.0)
+                    } else {
+                        w.balance + target.amount
+                    }
+                    w.copy(balance = reversedBal)
+                } else w
+            }
+        }
 
         return try {
             firestore.collection("family_groups")
                 .document(groupId)
                 .collection("transactions")
                 .document(transactionId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.success(Unit)
+        }
+    }
+
+    // 3.25 Manajemen Dompet Kas & Alokasi (Kas Harian, Tabungan Roadmap, Dana Darurat)
+    fun getWalletsStream(groupId: String): Flow<List<Wallet>> = callbackFlow {
+        try {
+            val listener = firestore.collection("family_groups")
+                .document(groupId)
+                .collection("wallets")
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null || snapshot.isEmpty) {
+                        trySend(localWallets.value)
+                        return@addSnapshotListener
+                    }
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            Wallet(
+                                id = doc.getString("id") ?: doc.id,
+                                name = doc.getString("name") ?: "",
+                                balance = doc.getDouble("balance") ?: 0.0,
+                                isPrimary = doc.getBoolean("isPrimary") ?: false,
+                                iconEmoji = doc.getString("iconEmoji") ?: "👛"
+                            )
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    trySend(list)
+                }
+            awaitClose { listener.remove() }
+        } catch (e: Exception) {
+            trySend(localWallets.value)
+            awaitClose { }
+        }
+    }
+
+    suspend fun addWallet(groupId: String, wallet: Wallet): Result<Unit> {
+        val wId = if (wallet.id.isBlank()) UUID.randomUUID().toString() else wallet.id
+        val newW = wallet.copy(id = wId)
+        localWallets.value = localWallets.value + newW
+        return try {
+            firestore.collection("family_groups")
+                .document(groupId)
+                .collection("wallets")
+                .document(wId)
+                .set(newW)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.success(Unit)
+        }
+    }
+
+    suspend fun updateWallet(groupId: String, wallet: Wallet): Result<Unit> {
+        localWallets.value = localWallets.value.map { if (it.id == wallet.id) wallet else it }
+        return try {
+            firestore.collection("family_groups")
+                .document(groupId)
+                .collection("wallets")
+                .document(wallet.id)
+                .set(wallet)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.success(Unit)
+        }
+    }
+
+    suspend fun deleteWallet(groupId: String, walletId: String): Result<Unit> {
+        localWallets.value = localWallets.value.filter { it.id != walletId }
+        return try {
+            firestore.collection("family_groups")
+                .document(groupId)
+                .collection("wallets")
+                .document(walletId)
                 .delete()
                 .await()
             Result.success(Unit)
@@ -337,6 +454,21 @@ class FinanceRepository(
                 .collection("memories")
                 .document(memId)
                 .set(newMem)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.success(Unit)
+        }
+    }
+
+    suspend fun updateFamilyMemory(groupId: String, memory: FamilyMemory): Result<Unit> {
+        localMemories.value = localMemories.value.map { if (it.id == memory.id) memory else it }
+        return try {
+            firestore.collection("family_groups")
+                .document(groupId)
+                .collection("memories")
+                .document(memory.id)
+                .set(memory)
                 .await()
             Result.success(Unit)
         } catch (e: Exception) {

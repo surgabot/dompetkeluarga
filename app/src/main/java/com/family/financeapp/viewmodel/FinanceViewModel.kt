@@ -118,7 +118,6 @@ data class FinanceUiState(
     val selectedWalletId: String = "w1",
 
     val transactions: List<Transaction> = emptyList(),
-    val totalBalance: Double = 81000000.0,
     val totalExpense: Double = 1580000.0,
     val totalIncome: Double = 14350000.0,
     val expensesByCategory: Map<TransactionCategory, Double> = emptyMap(),
@@ -130,12 +129,19 @@ data class FinanceUiState(
     // Interaksi Media & Dialog
     val activePlayingVideo: Pair<String, String>? = null, // Video URL, Video Title
     val editingTransaction: Transaction? = null,          // Transaksi yang sedang diedit
+    val editingWallet: Wallet? = null,                    // Dompet yang sedang diedit saldonya
+    val isAddingNewWallet: Boolean = false,               // Apakah sedang buka dialog tambah dompet
+    val editingMemory: FamilyMemory? = null,              // Kenangan yang sedang diedit
 
     // Folder Kenangan Keluarga
     val memories: List<FamilyMemory> = emptyList(),
     val selectedMemoryCategoryFilter: String = "Semua",
     val selectedMemoryTypeFilter: String = "Semua"
 ) {
+    // Total Net Worth Keluarga dihitung otomatis dari seluruh dompet kas & aset
+    val totalBalance: Double
+        get() = wallets.sumOf { it.balance }
+
     val activeWallet: Wallet
         get() = wallets.find { it.id == selectedWalletId } ?: wallets.first()
 }
@@ -158,14 +164,20 @@ class FinanceViewModel(
     private val uploadMediaUseCase = UploadMediaUseCase(repository)
     private val calculateRoadmapHealthUseCase = CalculateRoadmapHealthUseCase()
     private val attachMilestoneProofUseCase = AttachMilestoneProofUseCase(repository)
+    private val getWalletsUseCase = GetWalletsUseCase(repository)
+    private val addWalletUseCase = AddWalletUseCase(repository)
+    private val updateWalletUseCase = UpdateWalletUseCase(repository)
+    private val deleteWalletUseCase = DeleteWalletUseCase(repository)
     private val getFamilyMemoriesUseCase = GetFamilyMemoriesUseCase(repository)
     private val addFamilyMemoryUseCase = AddFamilyMemoryUseCase(repository)
+    private val updateFamilyMemoryUseCase = UpdateFamilyMemoryUseCase(repository)
     private val deleteFamilyMemoryUseCase = DeleteFamilyMemoryUseCase(repository)
 
     private val _uiState = MutableStateFlow(FinanceUiState())
     val uiState: StateFlow<FinanceUiState> = _uiState.asStateFlow()
 
     init {
+        listenToWallets("fam_1")
         listenToTransactions("fam_1")
         listenToMemories("fam_1")
     }
@@ -282,7 +294,9 @@ class FinanceViewModel(
                     currentUserName = adminName,
                     isLoading = false
                 )
+                listenToWallets(group.id)
                 listenToTransactions(group.id)
+                listenToMemories(group.id)
             }.onFailure { err ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -302,7 +316,9 @@ class FinanceViewModel(
                     currentUserName = memberName,
                     isLoading = false
                 )
+                listenToWallets(group.id)
                 listenToTransactions(group.id)
+                listenToMemories(group.id)
             }.onFailure { err ->
                 _uiState.value = _uiState.value.copy(
                     isLoading = false,
@@ -392,6 +408,80 @@ class FinanceViewModel(
                 .collect { list ->
                     _uiState.value = _uiState.value.copy(memories = list)
                 }
+        }
+    }
+
+    fun setEditingMemory(memory: FamilyMemory?) {
+        _uiState.value = _uiState.value.copy(editingMemory = memory)
+    }
+
+    fun updateFamilyMemory(
+        memory: FamilyMemory,
+        newMediaUri: Uri? = null,
+        newMediaType: String? = null
+    ) {
+        val group = _uiState.value.familyGroup ?: return
+        viewModelScope.launch {
+            updateFamilyMemoryUseCase(group.id, memory, newMediaUri, newMediaType)
+            _uiState.value = _uiState.value.copy(editingMemory = null)
+        }
+    }
+
+    // --- MANAJEMEN MULTI-DOMPET & NET WORTH ---
+    private fun listenToWallets(groupId: String) {
+        viewModelScope.launch {
+            getWalletsUseCase(groupId)
+                .catch { /* Fallback */ }
+                .collect { list ->
+                    _uiState.value = _uiState.value.copy(wallets = list)
+                }
+        }
+    }
+
+    fun setEditingWallet(wallet: Wallet?) {
+        _uiState.value = _uiState.value.copy(editingWallet = wallet)
+    }
+
+    fun setIsAddingNewWallet(isAdding: Boolean) {
+        _uiState.value = _uiState.value.copy(isAddingNewWallet = isAdding)
+    }
+
+    fun saveWallet(
+        id: String,
+        name: String,
+        balance: Double,
+        iconEmoji: String,
+        isPrimary: Boolean
+    ) {
+        val group = _uiState.value.familyGroup ?: return
+        viewModelScope.launch {
+            if (id.isBlank()) {
+                val newWallet = Wallet(
+                    name = name,
+                    balance = balance,
+                    isPrimary = isPrimary,
+                    iconEmoji = iconEmoji
+                )
+                addWalletUseCase(group.id, newWallet)
+            } else {
+                val updatedWallet = Wallet(
+                    id = id,
+                    name = name,
+                    balance = balance,
+                    isPrimary = isPrimary,
+                    iconEmoji = iconEmoji
+                )
+                updateWalletUseCase(group.id, updatedWallet)
+            }
+            _uiState.value = _uiState.value.copy(editingWallet = null, isAddingNewWallet = false)
+        }
+    }
+
+    fun deleteWallet(walletId: String) {
+        val group = _uiState.value.familyGroup ?: return
+        viewModelScope.launch {
+            deleteWalletUseCase(group.id, walletId)
+            _uiState.value = _uiState.value.copy(editingWallet = null)
         }
     }
 }

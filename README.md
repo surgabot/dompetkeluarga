@@ -1,5 +1,5 @@
 # Dompet Keluarga & Roadmap Finansial 👨‍👩‍👧‍👦💎
-> **Family Financial Roadmap & Memory Vault** — Aplikasi Android Modern berbasis **Jetpack Compose**, mengadopsi standar arsitektur bisnis **Kotlin Multiplatform (KMP) ala Bilibili**, estetika **KMP Dark Theme**, serta dilengkapi **Pemutar Video & Album Kenangan Keluarga**.
+> **Family Financial Roadmap & Memory Vault** — Aplikasi Android Modern berbasis **Jetpack Compose**, mengadopsi standar arsitektur bisnis **Kotlin Multiplatform (KMP) ala Bilibili**, estetika **KMP Dark Theme**, serta dilengkapi **Multi-Wallet Dinamis, Pemutar Video In-App & Album Kenangan Keluarga**.
 
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.23-7F52FF.svg?logo=kotlin&logoColor=white)](https://kotlinlang.org/)
 [![Jetpack Compose](https://img.shields.io/badge/Jetpack%20Compose-2024.05.00-4285F4.svg?logo=android&logoColor=white)](https://developer.android.com/jetpack/compose)
@@ -11,7 +11,22 @@
 
 ## ✨ Fitur Unggulan
 
-### 1. 🗺️ Peta Jalan Finansial Nyata (Family Financial Roadmap)
+### 1. 👛 Multi-Wallet Dinamis & Pelacak Aset Bersih (Net Worth Tracker)
+Total Aset Bersih Keluarga (*Net Worth*) dihitung secara **otomatis dan *real-time*** dari penjumlahan seluruh saldo pos dompet keluarga:
+$$\text{Total Aset Bersih (Net Worth)} = \sum \text{Saldo Seluruh Dompet Kas \& Alokasi}$$
+
+* **Pos Bawaan:**
+  * 👛 **Kas Harian**: Kas likuid operasional bulanan rumah tangga.
+  * 🎯 **Tabungan Roadmap**: Alokasi khusus tabungan target tahapan hidup keluarga.
+  * 🛡️ **Dana Darurat**: Simpanan likuid antisipasi krisis/PHK/sakit.
+* **Kelola & Sunting Saldo (`EditWalletDialog`):**
+  * Ketuk tombol **[✎ Edit]** pada kartu dompet untuk mengubah nominal saldo secara langsung (misal: setelah gajian atau alokasi deposito cair).
+  * Menambah pos dompet baru dengan menekan tombol **[+ Tambah Pos]** (contoh: *Investasi Emas*, *Tabungan Haji*, *Reksadana*).
+  * Saldo otomatis bertambah/berkurang saat mencatat pemasukan atau pengeluaran baru.
+
+---
+
+### 2. 🗺️ Peta Jalan Finansial Nyata (Family Financial Roadmap)
 Bukan sekadar buku kas biasa, aplikasi ini memandu perjalanan finansial keluarga melewati **6 Tahapan Hidup**:
 1. **Fondasi 1: Dana Darurat 6 Bulan (Rp 30.000.000)** — Antisipasi risiko sakit mendadak atau PHK di instrumen likuid.
 2. **Fondasi 2: Proteksi & Asuransi Kesehatan** — BPJS aktif dan asuransi jiwa murni untuk pencari nafkah.
@@ -22,51 +37,60 @@ Bukan sekadar buku kas biasa, aplikasi ini memandu perjalanan finansial keluarga
 
 ---
 
-### 2. 📸 Folder Kenangan Manis Keluarga (Family Memory Vault)
-Setiap rupiah yang ditabung dalam roadmap bermuara pada momen bahagia bersama keluarga:
+### 3. 📸 Folder Kenangan Manis Keluarga (Family Memory Vault)
+Setiap rupiah yang diperjuangkan dalam roadmap bermuara pada momen bahagia bersama keluarga:
 * **Kategori Album:**
-  * 🏖️ **Liburan**: Dokumentasi perjalanan wisata keluarga (misal: Pantai, Jogja, Mudik Lebaran).
-  * 🏡 **Rumah**: Foto & video progres renovasi kamar, pasang keramik, serah terima hunian.
-  * 🎓 **Pendidikan**: Momen wisuda, rapor berprestasi anak, atau perlengkapan sekolah baru.
+  * 🏖️ **Liburan**: Dokumentasi perjalanan wisata keluarga (Jogja, Pantai, Mudik).
+  * 🏡 **Rumah**: Foto & video progres renovasi, pasang keramik, serah terima hunian.
+  * 🎓 **Pendidikan**: Momen wisuda, rapor juara kelas anak, atau perlengkapan sekolah baru.
   * ❤️ **Perayaan**: Syukuran ulang tahun anggota keluarga, anniversary pernikahan.
-* **Filter Pintar:** Filter berdasarkan kategori album atau tipe berkas (**Semua Media**, **📷 Foto Saja**, **🎥 Video Saja**).
-* **Form Abadikan Momen:** Mengunggah foto atau rekaman video langsung dari galeri HP, memberi judul, tanggal kenangan, dan cerita di balik momen manis.
+* **Sunting & Ganti Media (`EditMemoryDialog`):**
+  * Tombol **[Sunting]** di setiap kartu kenangan memungkinkan pengeditan judul, tanggal momen, kategori, cerita kenangan, serta **mengganti foto atau video** baru langsung dari galeri HP.
+* **Filter Pintar:** Filter album berdasarkan kategori atau tipe berkas (**Semua Media**, **📷 Foto Saja**, **🎥 Video Saja**).
 
 ---
 
-### 3. 🎥 Pemutar Video In-App ala Bilibili (`BilibiliVideoPlayerDialog`)
-* **Pemutar Video di Dalam Aplikasi:** Memutar video bukti transaksi atau video dokumentasi progres roadmap (seperti renovasi rumah) langsung di dalam aplikasi tanpa aplikasi luar.
-* **Fitur Kontrol:** Dilengkapi Play/Pause, Seekbar durasi, perulangan otomatis (*looping*), dan bingkai KMP Dark beraksen ungu.
-* **Thumbnail Otomatis:** Menggunakan `coil-video` dengan `VideoFrameDecoder` untuk mengekstrak frame pertama video sebagai cover thumbnail secara instan.
+### 4. 🎥 Pemutar Video In-App ala Bilibili (`BilibiliVideoPlayerDialog`)
+* **Pemutar Video di Dalam Aplikasi:** Memutar video bukti alokasi kas atau rekaman kenangan keluarga langsung di layar tanpa dialihkan ke aplikasi eksternal.
+* **Fitur Kontrol:** Dilengkapi Play/Pause, seekbar durasi, perulangan otomatis (*looping*), dan antarmuka gelap KMP beraksen ungu.
+* **Thumbnail Otomatis:** Menggunakan `coil-video` dengan `VideoFrameDecoder` untuk mengekstrak cover thumbnail video secara otomatis.
 
 ---
 
-### 4. 🧾 Manajemen Struk, Tombol Edit & Reset
-* **Android Photo Picker Resmi Google:** Memilih foto nota atau rekaman video tanpa perlu izin galeri berbahaya (`READ_MEDIA_IMAGES`), aman untuk Samsung One UI dan Android 14.
-* **Tombol `[Edit / Reset]` yang Terlihat:** Terletak jelas di setiap kartu transaksi. Pengguna dapat:
-  * Mengubah nominal, judul alokasi, kategori, atau catatan.
-  * Menekan tombol **Reset Struk ↺** untuk menghapus lampiran media tanpa membatalkan transaksi.
-  * Menekan tombol **Ganti Berkas** untuk memilih foto/video lain.
-  * Menghapus transaksi secara permanen.
-
----
-
-### 5. 👛 Multi-Wallet & Skor Kesehatan Finansial
-* **Kantong Dompet Khusus:** Memisahkan *Kas Harian*, *Tabungan Roadmap*, dan *Dana Darurat*.
-* **Family Health Score:** Skor kesehatan keuangan interaktif (misal: **82/100 - Level 4: Pertumbuhan Aset**).
-* **Net Worth Tracker:** Menghitung total akumulasi aset bersih keluarga secara otomatis.
+### 5. 🧾 Manajemen Struk, Tombol Edit & Reset
+* **Android Photo Picker Resmi Google:** Memilih foto nota belanja atau video bukti transaksi tanpa izin akses galeri yang berbahaya.
+* **Tombol `[Edit / Reset]` yang Terlihat:** Pengguna dapat mengubah nominal, kategori, mengganti berkas, atau menekan **Reset Struk ↺** untuk menghapus lampiran media tanpa membatalkan transaksi.
 
 ---
 
 ### 6. 🔒 Keamanan Biometrik Setara Perbankan
-* Dilengkapi sensor biometrik bawaan HP (**Sidik Jari / Face Unlock / PIN**) menggunakan `androidx.biometric.BiometricPrompt`.
-* Mencegah orang lain yang meminjam HP melihat saldo atau catatan privasi keluarga.
+* Dilengkapi sensor biometrik bawaan HP (**Sidik Jari / Face Unlock / PIN**) menggunakan `androidx.biometric.BiometricPrompt` untuk melindungi kerahasiaan keuangan keluarga.
+
+---
+
+## 👨‍👩‍👧‍👦 Cara Memanfaatkan Aplikasi Bersama Keluarga
+
+Agar aplikasi ini dapat diadopsi dengan sukses dan memberikan dampak nyata bagi keuangan keluarga:
+
+### 1. Pembagian Peran Anggota Keluarga
+* **Ayah (Pencari Nafkah / Koordinator):** Memperbarui saldo kas setelah gajian, mengalokasikan tabungan roadmap, dan memantau skor kesehatan finansial.
+* **Ibu (Manajer Rumah Tangga):** Mencatat belanja harian/mingguan dengan melampirkan foto struk kasir agar anggaran dapur tetap terkontrol.
+* **Anak (Pendidikan & Apresiasi):** Ikut melihat pencapaian dana pendidikan, serta mengunggah foto/video momen kenangan keluarga (misal: wisuda atau liburan).
+
+### 2. Rutinitas Finansial Mingguan & Bulanan
+* **Evaluasi Mingguan (10 Menit):** Membuka menu *Laporan* untuk melihat anggota keluarga mana dan pos apa yang menyerap anggaran tertinggi minggu ini.
+* **Update Target Bulanan:** Setelah menyisihkan tabungan ke rekening atau reksadana, buka tombol `[✎ Edit]` pada pos *Tabungan Roadmap* atau *Dana Darurat* untuk menyesuaikan saldo baru. Total Net Worth akan langsung melonjak naik!
+
+### 3. Distribusi Aplikasi ke HP Pasangan / Anak
+1. Kirim berkas APK (`app/build/outputs/apk/debug/app-debug.apk`) ke HP pasangan atau anak via WhatsApp / Google Drive / Bluetooth.
+2. Buka berkas APK di HP tersebut dan pilih **Install** (izinkan *Install unknown apps* jika diminta).
+3. Anggota keluarga dapat langsung membuka aplikasi dan memanfaatkan seluruh fitur pencatatan, roadmap, dan album kenangan bersama.
 
 ---
 
 ## 🏛️ Arsitektur Proyek (Bilibili KMP Architecture Standard)
 
-Aplikasi dibangun dengan pola **Clean Architecture ("3 Layers 2 Interfaces")** dan **MVI (Model-View-Intent)** yang diadaptasi dari praktik rekayasa Kotlin Multiplatform berskala besar di Bilibili:
+Aplikasi dibangun dengan pola **Clean Architecture ("3 Layers 2 Interfaces")** dan **MVI (Model-View-Intent)**:
 
 ```text
 com.family.financeapp/
@@ -74,10 +98,11 @@ com.family.financeapp/
 │   └── usecase/
 │       ├── TransactionUseCases.kt        <-- Get, Add, Update, Delete, ResetMedia UseCases
 │       ├── RoadmapUseCases.kt            <-- Health Score & Milestone Proof UseCases
-│       └── MemoryUseCases.kt             <-- Get, Add, Delete Family Memories UseCases
+│       ├── WalletUseCases.kt             <-- Get, Add, Update, Delete Wallets UseCases
+│       └── MemoryUseCases.kt             <-- Get, Add, Update, Delete Memories UseCases
 │
 ├── data/                                 <-- DATA LAYER (Single Source of Truth)
-│   └── FinanceRepository.kt              <-- In-Memory Offline Cache + Remote Cloud Storage
+│   └── FinanceRepository.kt              <-- Multi-Wallet State, InMemory Fallback & Cloud Sync
 │
 ├── model/                                <-- DATA MODELS
 │   └── Models.kt                         <-- RoadmapMilestone, Transaction, FamilyMemory, Wallet
@@ -85,9 +110,11 @@ com.family.financeapp/
 ├── ui/                                   <-- PRESENTATION LAYER (Jetpack Compose)
 │   ├── components/
 │   │   ├── BilibiliVideoPlayerDialog.kt  <-- Pemutar Video In-App Modern
-│   │   └── EditTransactionDialog.kt      <-- Dialog Edit, Reset Struk, & Hapus
+│   │   ├── EditTransactionDialog.kt      <-- Dialog Edit & Reset Struk
+│   │   ├── EditWalletDialog.kt           <-- Dialog Sunting Saldo Dompet & Net Worth
+│   │   └── EditMemoryDialog.kt           <-- Dialog Sunting Cerita & Berkas Kenangan
 │   ├── screens/
-│   │   ├── DashboardScreen.kt            <-- Beranda Roadmap & Transaksi
+│   │   ├── DashboardScreen.kt            <-- Beranda Roadmap, Multi-Wallet, & Net Worth
 │   │   ├── FamilyMemoriesScreen.kt       <-- Layar Folder Kenangan Foto & Video
 │   │   ├── AddTransactionScreen.kt       <-- Form Alokasi & Picker Struk Media
 │   │   ├── AuthScreen.kt                 <-- Onboarding & Pairing Kode Undangan
@@ -98,7 +125,7 @@ com.family.financeapp/
 │       └── Type.kt
 │
 ├── viewmodel/                            <-- MVI STATE MACHINE
-│   └── FinanceViewModel.kt               <-- Immutable StateFlow & Intent Handlers
+│   └── FinanceViewModel.kt               <-- Single Source of Truth via StateFlow
 │
 └── MainActivity.kt                       <-- Entry Point & Initializer Coil VideoFrameDecoder
 ```
@@ -107,12 +134,10 @@ com.family.financeapp/
 
 ## 🎨 Palet Desain (Kotlin Multiplatform Dark Aesthetic)
 
-Warna aplikasi mengacu pada panduan desain resmi [Kotlin Multiplatform](https://kotlinlang.org/multiplatform/):
-
 | Warna | Hex Code | Penggunaan |
 | :--- | :---: | :--- |
 | **KMP Background** | `#0C0E14` | Latar belakang utama aplikasi (*Deep Charcoal*) |
-| **KMP Card Surface** | `#161922` | Permukaan kartu transaksi & milestone |
+| **KMP Card Surface** | `#161922` | Permukaan kartu transaksi, dompet, & milestone |
 | **Kotlin Purple** | `#7F52FF` | Aksen utama tombol aksi & gradient hero |
 | **Kotlin Magenta** | `#C711E1` | Gradasi aksen sekunder |
 | **Kotlin Cyan** | `#27C4F5` | Highlight teks penting & status aktif |
@@ -141,26 +166,12 @@ Warna aplikasi mengacu pada panduan desain resmi [Kotlin Multiplatform](https://
 git clone https://github.com/surgabot/dompetkeluarga.git
 ```
 
-### 2. Buka di Android Studio
-1. Buka **Android Studio** (disarankan versi Hedgehog, Iguana, Jellyfish, atau Ladybug).
-2. Pilih **Open an Existing Project** dan arahkan ke folder proyek.
-3. Tunggu hingga proses **Gradle Sync** selesai.
-
-### 3. Kompilasi & Jalankan (Build APK)
-Jalankan perintah berikut di Terminal Android Studio:
+### 2. Kompilasi APK (Terminal Android Studio)
 ```powershell
-# Jalankan kompilasi APK Debug
-.\gradlew.bat assembleDebug
+$env:JAVA_HOME = 'C:\Program Files\Android\openjdk\jdk-21.0.8'; .\gradlew.bat assembleDebug
 ```
-Berkas APK siap install akan berada di:
+Berkas APK siap install berada di:
 `app/build/outputs/apk/debug/app-debug.apk`
-
----
-
-## 🔒 Privasi & Keamanan Berkas
-
-1. **Mode Offline-First:** Secara default, saat koneksi internet belum siap atau belum tersambung ke cloud, semua data transaksi, foto, dan video **tetap tersimpan aman di HP Anda sendiri** tanpa keluar ke publik.
-2. **Mode Cloud Terisolasi:** Saat Firebase Storage dihubungkan, berkas diunggah ke *bucket* tertutup dengan aturan keamanan *Firebase Security Rules* yang hanya mengizinkan anggota ber-ID keluarga sama untuk membaca/mengunduh berkas.
 
 ---
 
