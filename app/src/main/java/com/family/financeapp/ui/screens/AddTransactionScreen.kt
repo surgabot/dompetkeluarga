@@ -44,6 +44,8 @@ fun AddTransactionScreen(
     var selectedType by remember { mutableStateOf(TransactionType.EXPENSE) }
     var selectedCategory by remember { mutableStateOf(TransactionCategory.FOOD) }
     var selectedMediaUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedMediaType by remember { mutableStateOf<String?>("IMAGE") }
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     // Android Photo Picker Resmi Google
     val mediaPickerLauncher = rememberLauncherForActivityResult(
@@ -51,6 +53,8 @@ fun AddTransactionScreen(
     ) { uri: Uri? ->
         if (uri != null) {
             selectedMediaUri = uri
+            val mime = context.contentResolver.getType(uri)
+            selectedMediaType = if (mime?.startsWith("video/") == true) "VIDEO" else "IMAGE"
         }
     }
 
@@ -245,7 +249,12 @@ fun AddTransactionScreen(
                                     .background(KmpDarkBg.copy(alpha = 0.85f))
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text("✓ Foto Struk Siap Disimpan", color = KotlinGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (selectedMediaType == "VIDEO") "✓ Video Bukti Siap Disimpan" else "✓ Foto Struk Siap Disimpan",
+                                    color = KotlinGreen,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     } else {
@@ -346,7 +355,7 @@ fun AddTransactionScreen(
                             category = selectedCategory,
                             note = note,
                             attachmentUri = selectedMediaUri,
-                            mediaType = if (selectedMediaUri != null) "IMAGE" else null
+                            mediaType = if (selectedMediaUri != null) selectedMediaType else null
                         )
                         onNavigateBack()
                     }

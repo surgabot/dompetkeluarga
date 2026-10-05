@@ -27,6 +27,9 @@ import com.family.financeapp.ui.screens.DashboardScreen
 import com.family.financeapp.ui.screens.ReportScreen
 import com.family.financeapp.ui.theme.FamilyFinanceTheme
 import com.family.financeapp.viewmodel.FinanceViewModel
+import coil.Coil
+import coil.ImageLoader
+import coil.decode.VideoFrameDecoder
 
 class MainActivity : FragmentActivity() {
 
@@ -35,6 +38,16 @@ class MainActivity : FragmentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Konfigurasi Coil dengan VideoFrameDecoder (Dukungan Video KMP Bilibili)
+        Coil.setImageLoader(
+            ImageLoader.Builder(this)
+                .components {
+                    add(VideoFrameDecoder.Factory())
+                }
+                .crossfade(true)
+                .build()
+        )
 
         biometricAuthManager = BiometricAuthManager(this)
 
@@ -124,7 +137,14 @@ fun AppNavigation(viewModel: FinanceViewModel) {
                 uiState = uiState,
                 onSelectWallet = { walletId -> viewModel.selectWallet(walletId) },
                 onAddTransactionClick = { navController.navigate("add_transaction") },
-                onViewReportClick = { navController.navigate("report") }
+                onViewReportClick = { navController.navigate("report") },
+                onEditTransaction = { tx -> viewModel.setEditingTransaction(tx) },
+                onDeleteTransaction = { id -> viewModel.deleteTransaction(id) },
+                onResetMedia = { id -> viewModel.resetTransactionMedia(id) },
+                onPlayVideo = { url, title -> viewModel.playVideo(url, title) },
+                onDismissVideoPlayer = { viewModel.dismissVideoPlayer() },
+                onSaveUpdateTransaction = { tx, uri -> viewModel.updateTransaction(tx, uri) },
+                onDismissEditDialog = { viewModel.setEditingTransaction(null) }
             )
         }
         composable("add_transaction") {

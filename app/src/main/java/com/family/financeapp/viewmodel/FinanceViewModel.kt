@@ -4,6 +4,7 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.family.financeapp.data.FinanceRepository
+import com.family.financeapp.domain.usecase.*
 import com.family.financeapp.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -11,6 +12,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
+/**
+ * State UI Finansial Terpusat (MVI State ala Bilibili KMP)
+ */
 data class FinanceUiState(
     val currentUserName: String = "Ayah",
     val familyGroup: FamilyGroup? = FamilyGroup(
@@ -73,7 +77,9 @@ data class FinanceUiState(
             iconEmoji = "🎓",
             description = "Mempersiapkan uang pangkal dan biaya pendidikan anak masa depan agar bebas inflasi pendidikan.",
             actionPlan = "Rutin menabung Rp 1.500.000 / bulan ke instrumen obligasi / reksadana pendapatan tetap.",
-            checklist = listOf("Target Tercapai 64%", "Kebutuhan Biaya Masuk Terhitung", "Alokasi Rutin Tiap Tanggal Gajian")
+            checklist = listOf("Target Tercapai 64%", "Kebutuhan Biaya Masuk Terhitung", "Alokasi Rutin Tiap Tanggal Gajian"),
+            mediaProofUrl = "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=600&auto=format&fit=crop&q=80",
+            mediaProofType = "IMAGE"
         ),
         RoadmapMilestone(
             phaseNumber = 5,
@@ -86,8 +92,8 @@ data class FinanceUiState(
             description = "Mengumpulkan DP 30% atau biaya renovasi dan pelunasan hunian tetap keluarga.",
             actionPlan = "Alokasi tabungan surplus keluarga sebesar Rp 2.000.000 / bulan.",
             checklist = listOf("Target Tercapai 48%", "Survei Lokasi & Legalitas", "Tabungan Terpisah Khusus Properti"),
-            mediaProofUrl = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&auto=format&fit=crop&q=80",
-            mediaProofType = "IMAGE"
+            mediaProofUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+            mediaProofType = "VIDEO"
         ),
         RoadmapMilestone(
             phaseNumber = 6,
@@ -112,22 +118,41 @@ data class FinanceUiState(
     val selectedWalletId: String = "w1",
 
     val transactions: List<Transaction> = emptyList(),
-    val totalBalance: Double = 81000000.0, // Total Aset Bersih Keluarga (Total Net Worth)
+    val totalBalance: Double = 81000000.0,
     val totalExpense: Double = 1580000.0,
     val totalIncome: Double = 14350000.0,
     val expensesByCategory: Map<TransactionCategory, Double> = emptyMap(),
     val expensesByMember: Map<String, Double> = emptyMap(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val isBiometricUnlocked: Boolean = true
+    val isBiometricUnlocked: Boolean = true,
+
+    // Interaksi Media & Dialog
+    val activePlayingVideo: Pair<String, String>? = null, // Video URL, Video Title
+    val editingTransaction: Transaction? = null          // Transaksi yang sedang diedit
 ) {
     val activeWallet: Wallet
         get() = wallets.find { it.id == selectedWalletId } ?: wallets.first()
 }
 
+/**
+ * ViewModel Terstruktur Mengikuti Pola Bilibili KMP Architecture:
+ * - Menggunakan UseCases untuk aturan bisnis terisolasi
+ * - Mengelola Single Source of Truth via StateFlow
+ */
 class FinanceViewModel(
     private val repository: FinanceRepository = FinanceRepository()
 ) : ViewModel() {
+
+    // Domain Use Cases
+    private val getTransactionsUseCase = GetTransactionsUseCase(repository)
+    private val addTransactionUseCase = AddTransactionUseCase(repository)
+    private val updateTransactionUseCase = UpdateTransactionUseCase(repository)
+    private val deleteTransactionUseCase = DeleteTransactionUseCase(repository)
+    private val resetTransactionMediaUseCase = ResetTransactionMediaUseCase(repository)
+    private val uploadMediaUseCase = UploadMediaUseCase(repository)
+    private val calculateRoadmapHealthUseCase = CalculateRoadmapHealthUseCase()
+    private val attachMilestoneProofUseCase = AttachMilestoneProofUseCase(repository)
 
     private val _uiState = MutableStateFlow(FinanceUiState())
     val uiState: StateFlow<FinanceUiState> = _uiState.asStateFlow()
@@ -138,6 +163,104 @@ class FinanceViewModel(
 
     fun setBiometricUnlocked(unlocked: Boolean) {
         _uiState.value = _uiState.value.copy(isBiometricUnlocked = unlocked)
+    }
+
+    fun selectWallet(walletId: String) {
+        _uiState.value = _uiState.value.copy(selectedWalletId = walletId)
+    }
+
+    // Pemutar Video Bilibili KMP
+    fun playVideo(videoUrl: String, title: String) {
+        _uiState.value = _uiState.value.copy(activePlayingVideo = Pair(videoUrl, title))
+    }
+
+    fun dismissVideoPlayer() {
+        _uiState.value = _uiState.value.copy(activePlayingVideo = null)
+    }
+
+    // Dialog Edit Transaksi
+    fun setEditingTransaction(transaction: Transaction?) {
+        _uiState.value = _uiState.value.copy(editingTransaction = transaction)
+    }
+
+    fun addTransaction(
+        title: String,
+        amount: Double,
+        type: TransactionType,
+        category: TransactionCategory,
+        note: String,
+        attachmentUri: Uri? = null,
+        mediaType: String? = null
+    ) {
+        val group = _uiState.value.familyGroup ?: return
+        val user = _uiState.value.currentUserName
+        val wallet = _uiState.value.selectedWalletId
+
+        viewModelScope.launch {
+            var finalUrl: String? = null
+            if (attachmentUri != null) {
+                val uploadRes = uploadMediaUseCase(attachmentUri, "receipts")
+                finalUrl = uploadRes.getOrDefault(attachmentUri.toString())
+            }
+
+            val tx = Transaction(
+                walletId = wallet,
+                title = title,
+                amount = amount,
+                type = type,
+                category = category,
+                note = note,
+                recordedBy = user,
+                attachmentUrl = finalUrl,
+                mediaType = mediaType
+            )
+            addTransactionUseCase(group.id, tx)
+        }
+    }
+
+    fun updateTransaction(transaction: Transaction, newAttachmentUri: Uri? = null) {
+        val group = _uiState.value.familyGroup ?: return
+        viewModelScope.launch {
+            var updatedTx = transaction
+            if (newAttachmentUri != null) {
+                val uploadRes = uploadMediaUseCase(newAttachmentUri, "receipts")
+                val finalUrl = uploadRes.getOrDefault(newAttachmentUri.toString())
+                updatedTx = updatedTx.copy(attachmentUrl = finalUrl, mediaType = "IMAGE")
+            }
+            updateTransactionUseCase(group.id, updatedTx)
+            _uiState.value = _uiState.value.copy(editingTransaction = null)
+        }
+    }
+
+    fun deleteTransaction(transactionId: String) {
+        val group = _uiState.value.familyGroup ?: return
+        viewModelScope.launch {
+            deleteTransactionUseCase(group.id, transactionId)
+            _uiState.value = _uiState.value.copy(editingTransaction = null)
+        }
+    }
+
+    fun resetTransactionMedia(transactionId: String) {
+        val group = _uiState.value.familyGroup ?: return
+        viewModelScope.launch {
+            resetTransactionMediaUseCase(group.id, transactionId)
+        }
+    }
+
+    fun attachMilestoneProof(
+        phaseNumber: Int,
+        proofUri: Uri,
+        mediaType: String = "IMAGE"
+    ) {
+        viewModelScope.launch {
+            val updated = attachMilestoneProofUseCase(
+                _uiState.value.roadmapMilestones,
+                phaseNumber,
+                proofUri,
+                mediaType
+            )
+            _uiState.value = _uiState.value.copy(roadmapMilestones = updated)
+        }
     }
 
     fun createFamily(familyName: String, adminName: String) {
@@ -180,67 +303,9 @@ class FinanceViewModel(
         }
     }
 
-    fun selectWallet(walletId: String) {
-        _uiState.value = _uiState.value.copy(selectedWalletId = walletId)
-    }
-
-    fun addTransaction(
-        title: String,
-        amount: Double,
-        type: TransactionType,
-        category: TransactionCategory,
-        note: String,
-        attachmentUri: Uri? = null,
-        mediaType: String? = null
-    ) {
-        val group = _uiState.value.familyGroup ?: return
-        val user = _uiState.value.currentUserName
-        val wallet = _uiState.value.selectedWalletId
-
-        viewModelScope.launch {
-            var finalUrl: String? = null
-            if (attachmentUri != null) {
-                val uploadRes = repository.uploadMedia(attachmentUri, "receipts")
-                finalUrl = uploadRes.getOrDefault(attachmentUri.toString())
-            }
-
-            val tx = Transaction(
-                walletId = wallet,
-                title = title,
-                amount = amount,
-                type = type,
-                category = category,
-                note = note,
-                recordedBy = user,
-                attachmentUrl = finalUrl,
-                mediaType = mediaType
-            )
-            repository.addTransaction(group.id, tx)
-        }
-    }
-
-    fun attachMilestoneProof(
-        phaseNumber: Int,
-        proofUri: Uri,
-        mediaType: String = "IMAGE"
-    ) {
-        viewModelScope.launch {
-            val uploadRes = repository.uploadMedia(proofUri, "milestones")
-            val url = uploadRes.getOrDefault(proofUri.toString())
-            val updated = _uiState.value.roadmapMilestones.map { m ->
-                if (m.phaseNumber == phaseNumber) {
-                    m.copy(mediaProofUrl = url, mediaProofType = mediaType)
-                } else {
-                    m
-                }
-            }
-            _uiState.value = _uiState.value.copy(roadmapMilestones = updated)
-        }
-    }
-
     private fun listenToTransactions(groupId: String) {
         viewModelScope.launch {
-            repository.getTransactionsStream(groupId)
+            getTransactionsUseCase(groupId)
                 .catch { e ->
                     _uiState.value = _uiState.value.copy(errorMessage = e.localizedMessage)
                 }

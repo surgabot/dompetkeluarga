@@ -57,6 +57,18 @@ class FinanceRepository(
                 note = "Buku matematika & sains",
                 recordedBy = "Anak",
                 timestamp = Timestamp.now()
+            ),
+            Transaction(
+                id = "4",
+                title = "Renovasi Dapur & Beli Material",
+                amount = 1450000.0,
+                type = TransactionType.EXPENSE,
+                category = TransactionCategory.OTHER,
+                note = "Rekaman video progres pengerjaan tukang",
+                recordedBy = "Ayah",
+                timestamp = Timestamp.now(),
+                attachmentUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                mediaType = "VIDEO"
             )
         )
     )
@@ -147,6 +159,49 @@ class FinanceRepository(
             // Berhasil tersimpan di memori lokal
             Result.success(Unit)
         }
+    }
+
+    // 3.1 Perbarui Transaksi (Edit Data / Ganti Media Lampiran)
+    suspend fun updateTransaction(groupId: String, transaction: Transaction): Result<Unit> {
+        localTransactions.value = localTransactions.value.map {
+            if (it.id == transaction.id) transaction else it
+        }
+
+        return try {
+            firestore.collection("family_groups")
+                .document(groupId)
+                .collection("transactions")
+                .document(transaction.id)
+                .set(transaction)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.success(Unit)
+        }
+    }
+
+    // 3.2 Hapus Transaksi dari Dompet
+    suspend fun deleteTransaction(groupId: String, transactionId: String): Result<Unit> {
+        localTransactions.value = localTransactions.value.filter { it.id != transactionId }
+
+        return try {
+            firestore.collection("family_groups")
+                .document(groupId)
+                .collection("transactions")
+                .document(transactionId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.success(Unit)
+        }
+    }
+
+    // 3.3 Reset / Hapus Lampiran Media Foto Struk atau Video
+    suspend fun resetTransactionMedia(groupId: String, transactionId: String): Result<Unit> {
+        val target = localTransactions.value.find { it.id == transactionId } ?: return Result.success(Unit)
+        val updated = target.copy(attachmentUrl = null, mediaType = null)
+        return updateTransaction(groupId, updated)
     }
 
     // 4. Sinkronisasi Data Transaksi

@@ -1,5 +1,6 @@
 package com.family.financeapp.ui.screens
 
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -27,6 +28,8 @@ import com.family.financeapp.model.MilestoneStatus
 import com.family.financeapp.model.RoadmapMilestone
 import com.family.financeapp.model.Transaction
 import com.family.financeapp.model.TransactionType
+import com.family.financeapp.ui.components.BilibiliVideoPlayerDialog
+import com.family.financeapp.ui.components.EditTransactionDialog
 import com.family.financeapp.ui.theme.*
 import com.family.financeapp.viewmodel.FinanceUiState
 import java.text.NumberFormat
@@ -44,10 +47,37 @@ fun DashboardScreen(
     onSelectWallet: (String) -> Unit = {},
     onAddTransactionClick: () -> Unit,
     onViewReportClick: () -> Unit,
+    onEditTransaction: (Transaction) -> Unit = {},
+    onDeleteTransaction: (String) -> Unit = {},
+    onResetMedia: (String) -> Unit = {},
+    onPlayVideo: (String, String) -> Unit = { _, _ -> },
+    onDismissVideoPlayer: () -> Unit = {},
+    onSaveUpdateTransaction: (Transaction, Uri?) -> Unit = { _, _ -> },
+    onDismissEditDialog: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     var expandedMilestoneIndex by remember { mutableStateOf<Int?>(3) } // Default expand Milestone 4 (Pendidikan)
     var selectedWalletId by remember { mutableStateOf("w1") }
+
+    // 1. Dialog Pemutar Video Bilibili KMP jika ada video yang sedang diputar
+    if (uiState.activePlayingVideo != null) {
+        BilibiliVideoPlayerDialog(
+            videoUrl = uiState.activePlayingVideo.first,
+            title = uiState.activePlayingVideo.second,
+            onDismissRequest = onDismissVideoPlayer
+        )
+    }
+
+    // 2. Dialog Edit & Kelola Transaksi jika ada transaksi yang sedang diedit
+    if (uiState.editingTransaction != null) {
+        EditTransactionDialog(
+            transaction = uiState.editingTransaction,
+            onDismissRequest = onDismissEditDialog,
+            onSaveUpdate = onSaveUpdateTransaction,
+            onDelete = onDeleteTransaction,
+            onResetMedia = onResetMedia
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -82,7 +112,7 @@ fun DashboardScreen(
                                         .border(1.dp, KotlinPurple.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
                                 ) {
-                                    Text("KMP DARK", color = KotlinCyan, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    Text("BILIBILI KMP", color = KotlinCyan, fontSize = 9.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
                             Text(
@@ -166,7 +196,7 @@ fun DashboardScreen(
 
                             Spacer(modifier = Modifier.height(14.dp))
 
-                            // Overall Progress Bar Roadmap (3 dari 6 selesai)
+                            // Overall Progress Bar Roadmap
                             Column {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
@@ -259,14 +289,22 @@ fun DashboardScreen(
                     isExpanded = isExpanded,
                     onToggleExpand = {
                         expandedMilestoneIndex = if (isExpanded) null else index
-                    }
+                    },
+                    onPlayVideoClick = onPlayVideo
                 )
             }
 
-            // 5. RIWAYAT ARUS KAS TERAKHIR
+            // 5. RIWAYAT ARUS KAS TERAKHIR DENGAN TOMBOL EDIT & KELOLA STRUK
             item {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("AKTIVITAS KAS & ALOKASI TERAKHIR", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextGray, letterSpacing = 1.sp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("AKTIVITAS KAS & ALOKASI TERAKHIR", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextGray, letterSpacing = 1.sp)
+                    Text("Ketuk [Edit/Kelola] untuk ubah atau reset", fontSize = 10.sp, color = KotlinCyan)
+                }
             }
 
             if (uiState.transactions.isEmpty()) {
@@ -285,7 +323,12 @@ fun DashboardScreen(
                 }
             } else {
                 items(uiState.transactions) { tx ->
-                    KmpTransactionItem(tx = tx)
+                    KmpTransactionItem(
+                        tx = tx,
+                        onEditClick = { onEditTransaction(tx) },
+                        onResetMediaClick = { onResetMedia(tx.id) },
+                        onPlayVideoClick = { url -> onPlayVideo(url, tx.title) }
+                    )
                 }
             }
 
@@ -296,12 +339,13 @@ fun DashboardScreen(
     }
 }
 
-// Komponen Kartu Tahapan Roadmap (Gaya Desain Kotlin Multiplatform)
+// Komponen Kartu Tahapan Roadmap (Gaya Desain Kotlin Multiplatform & Bilibili Media)
 @Composable
 fun RoadmapMilestoneCard(
     milestone: RoadmapMilestone,
     isExpanded: Boolean,
-    onToggleExpand: () -> Unit
+    onToggleExpand: () -> Unit,
+    onPlayVideoClick: (String, String) -> Unit = { _, _ -> }
 ) {
     val borderColor = when (milestone.status) {
         MilestoneStatus.COMPLETED -> KotlinGreen.copy(alpha = 0.6f)
@@ -438,7 +482,25 @@ fun RoadmapMilestoneCard(
                     // Dokumentasi Bukti Media (Foto / Video)
                     if (milestone.mediaProofUrl != null) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        Text("Dokumentasi & Bukti Progres:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = KotlinCyan)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Dokumentasi & Bukti Progres:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = KotlinCyan)
+                            if (milestone.mediaProofType == "VIDEO") {
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(KotlinPurple.copy(alpha = 0.3f))
+                                        .border(1.dp, KotlinPurple, RoundedCornerShape(6.dp))
+                                        .clickable { onPlayVideoClick(milestone.mediaProofUrl, milestone.title) }
+                                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) {
+                                    Text("▶ Putar Video (Bilibili)", color = KotlinCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
                         Spacer(modifier = Modifier.height(6.dp))
                         Box(
                             modifier = Modifier
@@ -446,6 +508,11 @@ fun RoadmapMilestoneCard(
                                 .height(160.dp)
                                 .clip(RoundedCornerShape(12.dp))
                                 .border(1.dp, KotlinPurple.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                                .clickable {
+                                    if (milestone.mediaProofType == "VIDEO") {
+                                        onPlayVideoClick(milestone.mediaProofUrl, milestone.title)
+                                    }
+                                }
                         ) {
                             AsyncImage(
                                 model = milestone.mediaProofUrl,
@@ -453,6 +520,18 @@ fun RoadmapMilestoneCard(
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
+                            if (milestone.mediaProofType == "VIDEO") {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .size(48.dp)
+                                        .clip(CircleShape)
+                                        .background(KotlinPurple.copy(alpha = 0.85f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = "Putar", tint = TextWhite, modifier = Modifier.size(30.dp))
+                                }
+                            }
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
@@ -461,7 +540,12 @@ fun RoadmapMilestoneCard(
                                     .background(KmpDarkBg.copy(alpha = 0.85f))
                                     .padding(horizontal = 8.dp, vertical = 4.dp)
                             ) {
-                                Text("📸 Bukti Progres Keluarga", color = KotlinGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (milestone.mediaProofType == "VIDEO") "🎥 Video Progres (Ketuk untuk Putar)" else "📸 Bukti Progres Keluarga",
+                                    color = KotlinGreen,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
@@ -471,9 +555,14 @@ fun RoadmapMilestoneCard(
     }
 }
 
-// Item Transaksi dengan Gaya KMP Dark & Dukungan Foto Struk
+// Item Transaksi dengan Gaya KMP Dark, Tombol Edit/Reset, & Pemutar Video
 @Composable
-fun KmpTransactionItem(tx: Transaction) {
+fun KmpTransactionItem(
+    tx: Transaction,
+    onEditClick: () -> Unit,
+    onResetMediaClick: () -> Unit,
+    onPlayVideoClick: (String) -> Unit
+) {
     var isReceiptExpanded by remember { mutableStateOf(false) }
 
     Card(
@@ -482,11 +571,9 @@ fun KmpTransactionItem(tx: Transaction) {
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, KmpCardBorder, RoundedCornerShape(14.dp))
-            .clickable(enabled = tx.attachmentUrl != null) {
-                isReceiptExpanded = !isReceiptExpanded
-            }
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
+            // Baris Atas: Ikon + Info + Nominal + Tombol Edit
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically
@@ -509,7 +596,7 @@ fun KmpTransactionItem(tx: Transaction) {
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(tx.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextWhite)
@@ -524,54 +611,139 @@ fun KmpTransactionItem(tx: Transaction) {
                         }
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(tx.category.displayName, fontSize = 11.sp, color = TextMuted)
-                        if (tx.attachmentUrl != null) {
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (isReceiptExpanded) "📷 Tutup Struk" else "📷 Ada Struk",
-                                fontSize = 10.sp,
-                                color = KotlinCyan,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
                     }
                 }
 
-                Text(
-                    text = (if (tx.type == TransactionType.INCOME) "+ " else "- ") + formatRupiah(tx.amount),
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = if (tx.type == TransactionType.INCOME) KotlinGreen else KotlinOrange
-                )
+                Column(horizontalAlignment = Alignment.End) {
+                    Text(
+                        text = (if (tx.type == TransactionType.INCOME) "+ " else "- ") + formatRupiah(tx.amount),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = if (tx.type == TransactionType.INCOME) KotlinGreen else KotlinOrange
+                    )
+
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // Tombol Edit/Kelola yang Jelas & Terlihat
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(KotlinPurple.copy(alpha = 0.2f))
+                            .border(1.dp, KotlinPurple.copy(alpha = 0.4f), RoundedCornerShape(6.dp))
+                            .clickable { onEditClick() }
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.Edit, contentDescription = "Edit", tint = KotlinCyan, modifier = Modifier.size(11.dp))
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("Edit / Reset", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = KotlinCyan)
+                        }
+                    }
+                }
             }
 
-            // Tampilan Gambar Struk Jika Transaksi Memiliki Lampiran
+            // Baris Status Lampiran Media (Jika Ada Foto / Video)
             if (tx.attachmentUrl != null) {
-                AnimatedVisibility(visible = isReceiptExpanded) {
-                    Column(modifier = Modifier.padding(top = 12.dp)) {
-                        HorizontalDivider(color = KmpCardBorder, thickness = 1.dp)
-                        Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+                HorizontalDivider(color = KmpCardBorder, thickness = 0.8.dp)
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Badge Tombol Buka / Putar
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (tx.mediaType == "VIDEO") KotlinPurple.copy(alpha = 0.25f)
+                                else KmpSurfaceAccent
+                            )
+                            .clickable {
+                                if (tx.mediaType == "VIDEO") {
+                                    onPlayVideoClick(tx.attachmentUrl)
+                                } else {
+                                    isReceiptExpanded = !isReceiptExpanded
+                                }
+                            }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = if (tx.mediaType == "VIDEO") "▶ Putar Video Bukti (Bilibili Player)" 
+                                   else if (isReceiptExpanded) "📷 Sembunyikan Struk ▲" 
+                                   else "📷 Lihat Foto Struk ▼",
+                            fontSize = 10.sp,
+                            color = if (tx.mediaType == "VIDEO") KotlinCyan else KotlinGreen,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // Tombol Reset Media Cepat
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(KotlinOrange.copy(alpha = 0.15f))
+                            .clickable { onResetMediaClick() }
+                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "Reset Struk ↺",
+                            fontSize = 10.sp,
+                            color = KotlinOrange,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Gambar Thumbnail Struk / Video
+                AnimatedVisibility(visible = isReceiptExpanded || tx.mediaType == "VIDEO") {
+                    Column(modifier = Modifier.padding(top = 10.dp)) {
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .border(1.dp, KotlinPurple.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .border(1.dp, KotlinPurple.copy(alpha = 0.4f), RoundedCornerShape(10.dp))
+                                .clickable {
+                                    if (tx.mediaType == "VIDEO") {
+                                        onPlayVideoClick(tx.attachmentUrl)
+                                    }
+                                }
                         ) {
                             AsyncImage(
                                 model = tx.attachmentUrl,
-                                contentDescription = "Foto Struk Belanja",
+                                contentDescription = "Foto Struk / Video",
                                 modifier = Modifier.fillMaxSize(),
                                 contentScale = ContentScale.Crop
                             )
+                            if (tx.mediaType == "VIDEO") {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.Center)
+                                        .size(44.dp)
+                                        .clip(CircleShape)
+                                        .background(KotlinPurple.copy(alpha = 0.85f)),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(Icons.Default.PlayArrow, contentDescription = "Putar", tint = TextWhite, modifier = Modifier.size(28.dp))
+                                }
+                            }
                             Box(
                                 modifier = Modifier
                                     .align(Alignment.BottomStart)
-                                    .padding(8.dp)
-                                    .clip(RoundedCornerShape(6.dp))
+                                    .padding(6.dp)
+                                    .clip(RoundedCornerShape(4.dp))
                                     .background(KmpDarkBg.copy(alpha = 0.85f))
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
                             ) {
-                                Text("🧾 Struk Terverifikasi", color = KotlinCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                Text(
+                                    if (tx.mediaType == "VIDEO") "🎥 Video Bukti Transaksi (Ketuk untuk Putar)" else "🧾 Foto Struk Belanja",
+                                    color = KotlinCyan,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
