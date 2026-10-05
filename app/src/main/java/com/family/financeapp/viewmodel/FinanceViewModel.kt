@@ -90,6 +90,46 @@ class FinanceViewModel(
         _uiState.value = _uiState.value.copy(isBiometricUnlocked = unlocked)
     }
 
+    fun createFamily(familyName: String, adminName: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            val result = repository.createFamilyGroup(familyName, adminName)
+            result.onSuccess { group ->
+                _uiState.value = _uiState.value.copy(
+                    familyGroup = group,
+                    currentUserName = adminName,
+                    isLoading = false
+                )
+                listenToTransactions(group.id)
+            }.onFailure { err ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = err.localizedMessage ?: "Gagal membuat grup keluarga"
+                )
+            }
+        }
+    }
+
+    fun joinFamily(inviteCode: String, memberName: String) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            val result = repository.joinFamilyGroup(inviteCode, memberName)
+            result.onSuccess { group ->
+                _uiState.value = _uiState.value.copy(
+                    familyGroup = group,
+                    currentUserName = memberName,
+                    isLoading = false
+                )
+                listenToTransactions(group.id)
+            }.onFailure { err ->
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = err.localizedMessage ?: "Gagal bergabung dengan kode ini"
+                )
+            }
+        }
+    }
+
     fun selectWallet(walletId: String) {
         val selected = _uiState.value.wallets.find { it.id == walletId }
         _uiState.value = _uiState.value.copy(
