@@ -385,15 +385,17 @@ fun RoadmapMilestoneCard(
                         .clip(RoundedCornerShape(3.dp))
                         .background(KmpSurfaceAccent)
                 ) {
+                    val barBrush = if (milestone.status == MilestoneStatus.COMPLETED) {
+                        androidx.compose.ui.graphics.SolidColor(KotlinGreen)
+                    } else {
+                        KotlinGradient
+                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(milestone.progress)
                             .fillMaxHeight()
                             .clip(RoundedCornerShape(3.dp))
-                            .background(
-                                if (milestone.status == MilestoneStatus.COMPLETED) KotlinGreen
-                                else KotlinGradient
-                            )
+                            .background(barBrush)
                     )
                 }
             }
