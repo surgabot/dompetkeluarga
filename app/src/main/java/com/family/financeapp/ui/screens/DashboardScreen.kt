@@ -47,6 +47,7 @@ fun DashboardScreen(
     onSelectWallet: (String) -> Unit = {},
     onAddTransactionClick: () -> Unit,
     onViewReportClick: () -> Unit,
+    onViewMemoriesClick: () -> Unit = {},
     onEditTransaction: (Transaction) -> Unit = {},
     onDeleteTransaction: (String) -> Unit = {},
     onResetMedia: (String) -> Unit = {},
@@ -124,6 +125,9 @@ fun DashboardScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = onViewMemoriesClick) {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = "Kenangan Keluarga", tint = KotlinOrange)
+                    }
                     IconButton(onClick = onViewReportClick) {
                         Icon(Icons.Default.Analytics, contentDescription = "Laporan", tint = KotlinCyan)
                     }
@@ -262,6 +266,56 @@ fun DashboardScreen(
                                 Text(formatRupiah(wallet.balance), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (isSelected) KotlinCyan else TextWhite)
                             }
                         }
+                    }
+                }
+            }
+
+            // 2.5 KAPSUL & FOLDER KENANGAN KELUARGA (FAMILY MEMORY VAULT)
+            item {
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = KmpCardBg),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onViewMemoriesClick() }
+                        .border(1.dp, KotlinPurple.copy(alpha = 0.5f), RoundedCornerShape(18.dp))
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(KotlinPurple.copy(alpha = 0.25f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text("📸", fontSize = 22.sp)
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text("KENANGAN KELUARGA", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextWhite)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(KotlinGreen.copy(alpha = 0.2f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text("${uiState.memories.size} Momen", color = KotlinGreen, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                Text("Album foto liburan, rumah & wisuda anak", fontSize = 11.sp, color = TextGray)
+                            }
+                        }
+
+                        Icon(Icons.Default.ChevronRight, contentDescription = "Buka", tint = KotlinCyan)
                     }
                 }
             }

@@ -78,3 +78,17 @@ data class FamilyGroup(
     val monthlyBudget: Double = 8000000.0,
     val members: List<String> = listOf("Ayah", "Ibu", "Anak")
 )
+
+// Model Berkas & Folder Kenangan Keluarga (Family Memory Vault)
+data class FamilyMemory(
+    val id: String = "",
+    val title: String = "",
+    val description: String = "",
+    val dateText: String = "",
+    val category: String = "Momen Manis", // Liburan, Pencapaian, Rumah, Pendidikan, Momen Manis
+    val mediaUrl: String = "",
+    val mediaType: String = "IMAGE", // "IMAGE" or "VIDEO"
+    val uploadedBy: String = "Keluarga",
+    val milestonePhaseLinked: Int? = null,
+    val timestamp: Timestamp = Timestamp.now()
+)

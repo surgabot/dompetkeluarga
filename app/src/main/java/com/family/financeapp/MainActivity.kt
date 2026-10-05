@@ -24,6 +24,7 @@ import com.family.financeapp.security.BiometricAuthManager
 import com.family.financeapp.ui.screens.AddTransactionScreen
 import com.family.financeapp.ui.screens.AuthScreen
 import com.family.financeapp.ui.screens.DashboardScreen
+import com.family.financeapp.ui.screens.FamilyMemoriesScreen
 import com.family.financeapp.ui.screens.ReportScreen
 import com.family.financeapp.ui.theme.FamilyFinanceTheme
 import com.family.financeapp.viewmodel.FinanceViewModel
@@ -138,6 +139,7 @@ fun AppNavigation(viewModel: FinanceViewModel) {
                 onSelectWallet = { walletId -> viewModel.selectWallet(walletId) },
                 onAddTransactionClick = { navController.navigate("add_transaction") },
                 onViewReportClick = { navController.navigate("report") },
+                onViewMemoriesClick = { navController.navigate("memories") },
                 onEditTransaction = { tx -> viewModel.setEditingTransaction(tx) },
                 onDeleteTransaction = { id -> viewModel.deleteTransaction(id) },
                 onResetMedia = { id -> viewModel.resetTransactionMedia(id) },
@@ -145,6 +147,18 @@ fun AppNavigation(viewModel: FinanceViewModel) {
                 onDismissVideoPlayer = { viewModel.dismissVideoPlayer() },
                 onSaveUpdateTransaction = { tx, uri -> viewModel.updateTransaction(tx, uri) },
                 onDismissEditDialog = { viewModel.setEditingTransaction(null) }
+            )
+        }
+        composable("memories") {
+            FamilyMemoriesScreen(
+                uiState = uiState,
+                onNavigateBack = { navController.popBackStack() },
+                onAddMemory = { title, desc, date, cat, uri, type ->
+                    viewModel.addFamilyMemory(title, desc, date, cat, uri, type)
+                },
+                onDeleteMemory = { memId -> viewModel.deleteFamilyMemory(memId) },
+                onPlayVideo = { url, title -> viewModel.playVideo(url, title) },
+                onDismissVideoPlayer = { viewModel.dismissVideoPlayer() }
             )
         }
         composable("add_transaction") {

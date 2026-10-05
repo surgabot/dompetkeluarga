@@ -2,6 +2,7 @@ package com.family.financeapp.data
 
 import android.net.Uri
 import com.family.financeapp.model.FamilyGroup
+import com.family.financeapp.model.FamilyMemory
 import com.family.financeapp.model.Transaction
 import com.family.financeapp.model.TransactionCategory
 import com.family.financeapp.model.TransactionType
@@ -23,6 +24,54 @@ class FinanceRepository(
         FirebaseFirestore.getInstance()
     }
 ) {
+    // Koleksi Folder Kenangan Keluarga (Foto & Video)
+    private val localMemories = MutableStateFlow<List<FamilyMemory>>(
+        listOf(
+            FamilyMemory(
+                id = "m1",
+                title = "Liburan Akhir Tahun ke Jogja",
+                description = "Kenangan liburan pertama keluarga setelah target Dana Darurat tercapai 100%. Momen sangat berharga!",
+                dateText = "Desember 2024",
+                category = "Liburan 🏖️",
+                mediaUrl = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800&auto=format&fit=crop&q=80",
+                mediaType = "IMAGE",
+                uploadedBy = "Ayah",
+                milestonePhaseLinked = 1
+            ),
+            FamilyMemory(
+                id = "m2",
+                title = "Progres Renovasi Kamar Anak",
+                description = "Dokumentasi video tukang memasang keramik dan plafon baru kamar tidur anak.",
+                dateText = "Februari 2025",
+                category = "Rumah 🏡",
+                mediaUrl = "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+                mediaType = "VIDEO",
+                uploadedBy = "Ayah",
+                milestonePhaseLinked = 5
+            ),
+            FamilyMemory(
+                id = "m3",
+                title = "Penerimaan Raport & Juara Kelas",
+                description = "Bangga sekali kakak ranking 1 semester ini. Buah dari investasi dana pendidikan teratur!",
+                dateText = "Juni 2025",
+                category = "Pendidikan 🎓",
+                mediaUrl = "https://images.unsplash.com/photo-1546410531-bb4caa6b424d?w=800&auto=format&fit=crop&q=80",
+                mediaType = "IMAGE",
+                uploadedBy = "Ibu",
+                milestonePhaseLinked = 4
+            ),
+            FamilyMemory(
+                id = "m4",
+                title = "Syukuran Ulang Tahun Ibu",
+                description = "Makan malam bersama keluarga tercinta di rumah impian yang mulai tertata rapi.",
+                dateText = "Agustus 2025",
+                category = "Perayaan ❤️",
+                mediaUrl = "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=800&auto=format&fit=crop&q=80",
+                mediaType = "IMAGE",
+                uploadedBy = "Anak"
+            )
+        )
+    )
     // Penyimpanan cadangan lokal (In-Memory) agar aplikasi tetap bisa dicoba tanpa error jika Firebase belum diatur
     private val localTransactions = MutableStateFlow<List<Transaction>>(
         listOf(
@@ -274,6 +323,77 @@ class FinanceRepository(
             // Mode Cadangan Cerdas (Offline / Firebase belum setup):
             // Gunakan URI lokal agar foto langsung tampil di layar seketika tanpa error
             Result.success(uri.toString())
+        }
+    }
+
+    // 6. Manajemen Folder & Kenangan Keluarga
+    suspend fun addFamilyMemory(groupId: String, memory: FamilyMemory): Result<Unit> {
+        val memId = UUID.randomUUID().toString()
+        val newMem = memory.copy(id = memId)
+        localMemories.value = listOf(newMem) + localMemories.value
+        return try {
+            firestore.collection("family_groups")
+                .document(groupId)
+                .collection("memories")
+                .document(memId)
+                .set(newMem)
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.success(Unit)
+        }
+    }
+
+    suspend fun deleteFamilyMemory(groupId: String, memoryId: String): Result<Unit> {
+        localMemories.value = localMemories.value.filter { it.id != memoryId }
+        return try {
+            firestore.collection("family_groups")
+                .document(groupId)
+                .collection("memories")
+                .document(memoryId)
+                .delete()
+                .await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.success(Unit)
+        }
+    }
+
+    fun getFamilyMemoriesStream(groupId: String): Flow<List<FamilyMemory>> = callbackFlow {
+        try {
+            val listener = firestore.collection("family_groups")
+                .document(groupId)
+                .collection("memories")
+                .orderBy("timestamp", Query.Direction.DESCENDING)
+                .addSnapshotListener { snapshot, error ->
+                    if (error != null || snapshot == null || snapshot.isEmpty) {
+                        trySend(localMemories.value)
+                        return@addSnapshotListener
+                    }
+                    val list = snapshot.documents.mapNotNull { doc ->
+                        try {
+                            FamilyMemory(
+                                id = doc.getString("id") ?: doc.id,
+                                title = doc.getString("title") ?: "",
+                                description = doc.getString("description") ?: "",
+                                dateText = doc.getString("dateText") ?: "",
+                                category = doc.getString("category") ?: "Momen Manis",
+                                mediaUrl = doc.getString("mediaUrl") ?: "",
+                                mediaType = doc.getString("mediaType") ?: "IMAGE",
+                                uploadedBy = doc.getString("uploadedBy") ?: "Keluarga",
+                                milestonePhaseLinked = doc.getLong("milestonePhaseLinked")?.toInt(),
+                                timestamp = doc.getTimestamp("timestamp") ?: Timestamp.now()
+                            )
+                        } catch (e: Exception) {
+                            null
+                        }
+                    }
+                    trySend(list)
+                }
+            awaitClose { listener.remove() }
+        } catch (e: Exception) {
+            trySend(localMemories.value)
+            awaitClose { }
         }
     }
 }

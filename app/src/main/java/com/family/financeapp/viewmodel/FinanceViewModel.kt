@@ -129,7 +129,12 @@ data class FinanceUiState(
 
     // Interaksi Media & Dialog
     val activePlayingVideo: Pair<String, String>? = null, // Video URL, Video Title
-    val editingTransaction: Transaction? = null          // Transaksi yang sedang diedit
+    val editingTransaction: Transaction? = null,          // Transaksi yang sedang diedit
+
+    // Folder Kenangan Keluarga
+    val memories: List<FamilyMemory> = emptyList(),
+    val selectedMemoryCategoryFilter: String = "Semua",
+    val selectedMemoryTypeFilter: String = "Semua"
 ) {
     val activeWallet: Wallet
         get() = wallets.find { it.id == selectedWalletId } ?: wallets.first()
@@ -153,12 +158,16 @@ class FinanceViewModel(
     private val uploadMediaUseCase = UploadMediaUseCase(repository)
     private val calculateRoadmapHealthUseCase = CalculateRoadmapHealthUseCase()
     private val attachMilestoneProofUseCase = AttachMilestoneProofUseCase(repository)
+    private val getFamilyMemoriesUseCase = GetFamilyMemoriesUseCase(repository)
+    private val addFamilyMemoryUseCase = AddFamilyMemoryUseCase(repository)
+    private val deleteFamilyMemoryUseCase = DeleteFamilyMemoryUseCase(repository)
 
     private val _uiState = MutableStateFlow(FinanceUiState())
     val uiState: StateFlow<FinanceUiState> = _uiState.asStateFlow()
 
     init {
         listenToTransactions("fam_1")
+        listenToMemories("fam_1")
     }
 
     fun setBiometricUnlocked(unlocked: Boolean) {
@@ -332,6 +341,56 @@ class FinanceViewModel(
                         expensesByCategory = byCat,
                         expensesByMember = byMem
                     )
+                }
+        }
+    }
+
+    // --- MANAJEMEN FOLDER KENANGAN KELUARGA ---
+    fun setMemoryCategoryFilter(category: String) {
+        _uiState.value = _uiState.value.copy(selectedMemoryCategoryFilter = category)
+    }
+
+    fun setMemoryTypeFilter(type: String) {
+        _uiState.value = _uiState.value.copy(selectedMemoryTypeFilter = type)
+    }
+
+    fun addFamilyMemory(
+        title: String,
+        description: String,
+        dateText: String,
+        category: String,
+        mediaUri: Uri,
+        mediaType: String
+    ) {
+        val group = _uiState.value.familyGroup ?: return
+        val user = _uiState.value.currentUserName
+        viewModelScope.launch {
+            addFamilyMemoryUseCase(
+                groupId = group.id,
+                title = title,
+                description = description,
+                dateText = dateText,
+                category = category,
+                mediaUri = mediaUri,
+                mediaType = mediaType,
+                uploadedBy = user
+            )
+        }
+    }
+
+    fun deleteFamilyMemory(memoryId: String) {
+        val group = _uiState.value.familyGroup ?: return
+        viewModelScope.launch {
+            deleteFamilyMemoryUseCase(group.id, memoryId)
+        }
+    }
+
+    private fun listenToMemories(groupId: String) {
+        viewModelScope.launch {
+            getFamilyMemoriesUseCase(groupId)
+                .catch { /* Fallback */ }
+                .collect { list ->
+                    _uiState.value = _uiState.value.copy(memories = list)
                 }
         }
     }
