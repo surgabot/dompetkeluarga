@@ -103,12 +103,13 @@ fun AddTransactionScreen(
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                TransactionCategory.values().chunked(2).forEach { rowCategories ->
+                val categoryRows = TransactionCategory.values().toList().chunked(2)
+                for (rowCategories in categoryRows) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        rowCategories.forEach { category ->
+                        for (category in rowCategories) {
                             FilterChip(
                                 selected = selectedCategory == category,
                                 onClick = { selectedCategory = category },
