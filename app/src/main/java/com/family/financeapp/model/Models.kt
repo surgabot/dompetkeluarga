@@ -30,10 +30,33 @@ data class Transaction(
     val timestamp: Timestamp = Timestamp.now()
 )
 
+// Celengan Digital / Kantong Impian Keluarga (Gaya Bank Jago / Marketplace)
+data class SavingsPocket(
+    val id: String = "",
+    val title: String = "",
+    val targetAmount: Double = 0.0,
+    val currentAmount: Double = 0.0,
+    val emoji: String = "💰"
+) {
+    val progress: Float
+        get() = if (targetAmount > 0) (currentAmount / targetAmount).toFloat().coerceIn(0f, 1f) else 0f
+}
+
+// Fitur Patungan & Split Bill
+data class SplitBill(
+    val id: String = "",
+    val title: String = "",
+    val totalAmount: Double = 0.0,
+    val members: List<String> = emptyList()
+) {
+    val amountPerPerson: Double
+        get() = if (members.isNotEmpty()) totalAmount / members.size else 0.0
+}
+
 data class FamilyGroup(
     val id: String = "",
     val familyName: String = "",
     val inviteCode: String = "", // Kode 6 digit untuk pairing antar-HP keluarga
-    val monthlyBudget: Double = 5000000.0, // Batas anggaran bulanan default Rp 5.000.000
-    val members: List<String> = emptyList()
+    val monthlyBudget: Double = 5000000.0,
+    val members: List<String> = listOf("Ayah", "Ibu", "Anak")
 )
