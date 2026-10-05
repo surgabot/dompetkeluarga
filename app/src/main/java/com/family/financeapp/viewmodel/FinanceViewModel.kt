@@ -9,11 +9,18 @@ import com.family.financeapp.model.SplitBill
 import com.family.financeapp.model.Transaction
 import com.family.financeapp.model.TransactionCategory
 import com.family.financeapp.model.TransactionType
+import com.family.financeapp.model.Wallet
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+
+data class DayCashflow(
+    val dayName: String,
+    val expense: Double,
+    val income: Double
+)
 
 data class FinanceUiState(
     val currentUserName: String = "Ayah",
@@ -24,6 +31,14 @@ data class FinanceUiState(
         monthlyBudget = 8000000.0,
         members = listOf("Ayah", "Ibu", "Anak")
     ),
+    // Fitur Multi-Wallet
+    val wallets: List<Wallet> = listOf(
+        Wallet("w1", "Kas Harian", 12500000.0, isPrimary = true, iconEmoji = "👛"),
+        Wallet("w2", "Dompet Liburan", 4250000.0, isPrimary = false, iconEmoji = "🏖️"),
+        Wallet("w3", "Dana Darurat", 8000000.0, isPrimary = false, iconEmoji = "🏥")
+    ),
+    val selectedWalletId: String = "w1",
+
     val transactions: List<Transaction> = emptyList(),
     val savingsPockets: List<SavingsPocket> = listOf(
         SavingsPocket("1", "Liburan Akhir Tahun", 5000000.0, 3750000.0, "🏖️"),
@@ -35,15 +50,30 @@ data class FinanceUiState(
         SplitBill("1", "Makan Malam Bersama di Resto", 300000.0, listOf("Ayah", "Ibu")),
         SplitBill("2", "Belanja Bulanan Supermarket", 650000.0, listOf("Ayah", "Ibu"))
     ),
+
+    // Data Grafik Arus Kas Mingguan
+    val weeklyCashflow: List<DayCashflow> = listOf(
+        DayCashflow("Sen", 120000.0, 500000.0),
+        DayCashflow("Sel", 250000.0, 0.0),
+        DayCashflow("Rab", 80000.0, 0.0),
+        DayCashflow("Kam", 320000.0, 0.0),
+        DayCashflow("Jum", 150000.0, 1500000.0),
+        DayCashflow("Sab", 450000.0, 0.0),
+        DayCashflow("Min", 210000.0, 0.0)
+    ),
+
     val totalBalance: Double = 12500000.0,
-    val totalExpense: Double = 1850000.0,
+    val totalExpense: Double = 1580000.0,
     val totalIncome: Double = 14350000.0,
     val expensesByCategory: Map<TransactionCategory, Double> = emptyMap(),
     val expensesByMember: Map<String, Double> = emptyMap(),
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val isBiometricUnlocked: Boolean = true
-)
+) {
+    val activeWallet: Wallet
+        get() = wallets.find { it.id == selectedWalletId } ?: wallets.first()
+}
 
 class FinanceViewModel(
     private val repository: FinanceRepository = FinanceRepository()
@@ -53,52 +83,27 @@ class FinanceViewModel(
     val uiState: StateFlow<FinanceUiState> = _uiState.asStateFlow()
 
     init {
-        // Otomatis dengarkan transaksi awal
         listenToTransactions("fam_1")
     }
 
-    fun setBiometricUnlocked(unlocked: Boolean) {
-        _uiState.value = _uiState.value.copy(isBiometricUnlocked = unlocked)
+    fun selectWallet(walletId: String) {
+        val selected = _uiState.value.wallets.find { it.id == walletId }
+        _uiState.value = _uiState.value.copy(
+            selectedWalletId = walletId,
+            totalBalance = selected?.balance ?: _uiState.value.totalBalance
+        )
     }
 
-    fun createFamily(familyName: String, adminName: String) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            val result = repository.createFamilyGroup(familyName, adminName)
-            result.onSuccess { group ->
-                _uiState.value = _uiState.value.copy(
-                    familyGroup = group,
-                    currentUserName = adminName,
-                    isLoading = false
-                )
-                listenToTransactions(group.id)
-            }.onFailure { err ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = err.localizedMessage ?: "Gagal membuat grup keluarga"
-                )
-            }
-        }
-    }
-
-    fun joinFamily(inviteCode: String, memberName: String) {
-        viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
-            val result = repository.joinFamilyGroup(inviteCode, memberName)
-            result.onSuccess { group ->
-                _uiState.value = _uiState.value.copy(
-                    familyGroup = group,
-                    currentUserName = memberName,
-                    isLoading = false
-                )
-                listenToTransactions(group.id)
-            }.onFailure { err ->
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = err.localizedMessage ?: "Gagal bergabung dengan kode ini"
-                )
-            }
-        }
+    fun addSplitBill(title: String, amount: Double, members: List<String>) {
+        val newSplit = SplitBill(
+            id = (System.currentTimeMillis()).toString(),
+            title = title,
+            totalAmount = amount,
+            members = members
+        )
+        _uiState.value = _uiState.value.copy(
+            splitBills = listOf(newSplit) + _uiState.value.splitBills
+        )
     }
 
     fun addTransaction(
@@ -110,9 +115,11 @@ class FinanceViewModel(
     ) {
         val group = _uiState.value.familyGroup ?: return
         val user = _uiState.value.currentUserName
+        val wallet = _uiState.value.selectedWalletId
 
         viewModelScope.launch {
             val tx = Transaction(
+                walletId = wallet,
                 title = title,
                 amount = amount,
                 type = type,
@@ -122,15 +129,6 @@ class FinanceViewModel(
             )
             repository.addTransaction(group.id, tx)
         }
-    }
-
-    fun topUpPocket(pocketId: String, amount: Double) {
-        val updated = _uiState.value.savingsPockets.map { pocket ->
-            if (pocket.id == pocketId) {
-                pocket.copy(currentAmount = pocket.currentAmount + amount)
-            } else pocket
-        }
-        _uiState.value = _uiState.value.copy(savingsPockets = updated)
     }
 
     private fun listenToTransactions(groupId: String) {
@@ -159,7 +157,7 @@ class FinanceViewModel(
                         transactions = list,
                         totalIncome = income,
                         totalExpense = expense,
-                        totalBalance = (14350000.0 + income) - (1850000.0 + expense),
+                        totalBalance = (14350000.0 + income) - (1580000.0 + expense),
                         expensesByCategory = byCat,
                         expensesByMember = byMem
                     )

@@ -122,6 +122,7 @@ fun AppNavigation(viewModel: FinanceViewModel) {
         composable("dashboard") {
             DashboardScreen(
                 uiState = uiState,
+                onSelectWallet = { walletId -> viewModel.selectWallet(walletId) },
                 onAddTransactionClick = { navController.navigate("add_transaction") },
                 onViewReportClick = { navController.navigate("report") }
             )
