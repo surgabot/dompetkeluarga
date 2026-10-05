@@ -1,5 +1,6 @@
 package com.family.financeapp.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.family.financeapp.data.FinanceRepository
@@ -84,7 +85,9 @@ data class FinanceUiState(
             iconEmoji = "🏡",
             description = "Mengumpulkan DP 30% atau biaya renovasi dan pelunasan hunian tetap keluarga.",
             actionPlan = "Alokasi tabungan surplus keluarga sebesar Rp 2.000.000 / bulan.",
-            checklist = listOf("Target Tercapai 48%", "Survei Lokasi & Legalitas", "Tabungan Terpisah Khusus Properti")
+            checklist = listOf("Target Tercapai 48%", "Survei Lokasi & Legalitas", "Tabungan Terpisah Khusus Properti"),
+            mediaProofUrl = "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=600&auto=format&fit=crop&q=80",
+            mediaProofType = "IMAGE"
         ),
         RoadmapMilestone(
             phaseNumber = 6,
@@ -186,13 +189,21 @@ class FinanceViewModel(
         amount: Double,
         type: TransactionType,
         category: TransactionCategory,
-        note: String
+        note: String,
+        attachmentUri: Uri? = null,
+        mediaType: String? = null
     ) {
         val group = _uiState.value.familyGroup ?: return
         val user = _uiState.value.currentUserName
         val wallet = _uiState.value.selectedWalletId
 
         viewModelScope.launch {
+            var finalUrl: String? = null
+            if (attachmentUri != null) {
+                val uploadRes = repository.uploadMedia(attachmentUri, "receipts")
+                finalUrl = uploadRes.getOrDefault(attachmentUri.toString())
+            }
+
             val tx = Transaction(
                 walletId = wallet,
                 title = title,
@@ -200,9 +211,30 @@ class FinanceViewModel(
                 type = type,
                 category = category,
                 note = note,
-                recordedBy = user
+                recordedBy = user,
+                attachmentUrl = finalUrl,
+                mediaType = mediaType
             )
             repository.addTransaction(group.id, tx)
+        }
+    }
+
+    fun attachMilestoneProof(
+        phaseNumber: Int,
+        proofUri: Uri,
+        mediaType: String = "IMAGE"
+    ) {
+        viewModelScope.launch {
+            val uploadRes = repository.uploadMedia(proofUri, "milestones")
+            val url = uploadRes.getOrDefault(proofUri.toString())
+            val updated = _uiState.value.roadmapMilestones.map { m ->
+                if (m.phaseNumber == phaseNumber) {
+                    m.copy(mediaProofUrl = url, mediaProofType = mediaType)
+                } else {
+                    m
+                }
+            }
+            _uiState.value = _uiState.value.copy(roadmapMilestones = updated)
         }
     }
 

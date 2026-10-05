@@ -60,9 +60,11 @@ dependencies {
     implementation libs.androidx.material.icons.extended
     implementation libs.androidx.navigation.compose
     implementation libs.androidx.biometric
+    implementation libs.coil.compose
     implementation platform(libs.firebase.bom)
     implementation libs.firebase.firestore.ktx
     implementation libs.firebase.auth.ktx
+    implementation libs.firebase.storage.ktx
     implementation libs.kotlinx.coroutines.play.services
     debugImplementation libs.androidx.ui.tooling
 }

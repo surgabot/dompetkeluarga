@@ -18,9 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.family.financeapp.model.MilestoneStatus
 import com.family.financeapp.model.RoadmapMilestone
 import com.family.financeapp.model.Transaction
@@ -432,70 +434,149 @@ fun RoadmapMilestoneCard(
                             Text(item, fontSize = 11.sp, color = TextGray)
                         }
                     }
+
+                    // Dokumentasi Bukti Media (Foto / Video)
+                    if (milestone.mediaProofUrl != null) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text("Dokumentasi & Bukti Progres:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = KotlinCyan)
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, KotlinPurple.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        ) {
+                            AsyncImage(
+                                model = milestone.mediaProofUrl,
+                                contentDescription = "Bukti Milestone",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(8.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(KmpDarkBg.copy(alpha = 0.85f))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("📸 Bukti Progres Keluarga", color = KotlinGreen, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-// Item Transaksi dengan Gaya KMP Dark
+// Item Transaksi dengan Gaya KMP Dark & Dukungan Foto Struk
 @Composable
 fun KmpTransactionItem(tx: Transaction) {
+    var isReceiptExpanded by remember { mutableStateOf(false) }
+
     Card(
         shape = RoundedCornerShape(14.dp),
         colors = CardDefaults.cardColors(containerColor = KmpCardBg),
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, KmpCardBorder, RoundedCornerShape(14.dp))
+            .clickable(enabled = tx.attachmentUrl != null) {
+                isReceiptExpanded = !isReceiptExpanded
+            }
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (tx.type == TransactionType.INCOME) KotlinGreen.copy(alpha = 0.15f)
-                        else KotlinOrange.copy(alpha = 0.15f)
-                    ),
-                contentAlignment = Alignment.Center
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(
-                    imageVector = if (tx.type == TransactionType.INCOME) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
-                    contentDescription = null,
-                    tint = if (tx.type == TransactionType.INCOME) KotlinGreen else KotlinOrange,
-                    modifier = Modifier.size(20.dp)
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(
+                            if (tx.type == TransactionType.INCOME) KotlinGreen.copy(alpha = 0.15f)
+                            else KotlinOrange.copy(alpha = 0.15f)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (tx.type == TransactionType.INCOME) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
+                        contentDescription = null,
+                        tint = if (tx.type == TransactionType.INCOME) KotlinGreen else KotlinOrange,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(tx.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextWhite)
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(KmpSurfaceAccent)
+                                .padding(horizontal = 6.dp, vertical = 2.dp)
+                        ) {
+                            Text(tx.recordedBy.ifBlank { "Keluarga" }, fontSize = 10.sp, color = TextGray)
+                        }
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(tx.category.displayName, fontSize = 11.sp, color = TextMuted)
+                        if (tx.attachmentUrl != null) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = if (isReceiptExpanded) "📷 Tutup Struk" else "📷 Ada Struk",
+                                fontSize = 10.sp,
+                                color = KotlinCyan,
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
+                    }
+                }
+
+                Text(
+                    text = (if (tx.type == TransactionType.INCOME) "+ " else "- ") + formatRupiah(tx.amount),
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = if (tx.type == TransactionType.INCOME) KotlinGreen else KotlinOrange
                 )
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(tx.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextWhite)
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(KmpSurfaceAccent)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    ) {
-                        Text(tx.recordedBy.ifBlank { "Keluarga" }, fontSize = 10.sp, color = TextGray)
+            // Tampilan Gambar Struk Jika Transaksi Memiliki Lampiran
+            if (tx.attachmentUrl != null) {
+                AnimatedVisibility(visible = isReceiptExpanded) {
+                    Column(modifier = Modifier.padding(top = 12.dp)) {
+                        HorizontalDivider(color = KmpCardBorder, thickness = 1.dp)
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(180.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .border(1.dp, KotlinPurple.copy(alpha = 0.4f), RoundedCornerShape(12.dp))
+                        ) {
+                            AsyncImage(
+                                model = tx.attachmentUrl,
+                                contentDescription = "Foto Struk Belanja",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomStart)
+                                    .padding(8.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(KmpDarkBg.copy(alpha = 0.85f))
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            ) {
+                                Text("🧾 Struk Terverifikasi", color = KotlinCyan, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(tx.category.displayName, fontSize = 11.sp, color = TextMuted)
                 }
             }
-
-            Text(
-                text = (if (tx.type == TransactionType.INCOME) "+ " else "- ") + formatRupiah(tx.amount),
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (tx.type == TransactionType.INCOME) KotlinGreen else KotlinOrange
-            )
         }
     }
 }

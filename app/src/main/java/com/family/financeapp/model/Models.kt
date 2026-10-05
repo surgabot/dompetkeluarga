@@ -38,7 +38,9 @@ data class RoadmapMilestone(
     val iconEmoji: String,
     val description: String,
     val actionPlan: String,
-    val checklist: List<String>
+    val checklist: List<String>,
+    val mediaProofUrl: String? = null,
+    val mediaProofType: String? = null // "IMAGE" or "VIDEO"
 ) {
     val progress: Float
         get() = if (targetAmount > 0) (currentAmount / targetAmount).toFloat().coerceIn(0f, 1f) else 1f
@@ -63,7 +65,9 @@ data class Transaction(
     val category: TransactionCategory = TransactionCategory.OTHER,
     val note: String = "",
     val recordedBy: String = "",
-    val timestamp: Timestamp = Timestamp.now()
+    val timestamp: Timestamp = Timestamp.now(),
+    val attachmentUrl: String? = null,
+    val mediaType: String? = null // "IMAGE" or "VIDEO"
 )
 
 // Grup Keluarga
