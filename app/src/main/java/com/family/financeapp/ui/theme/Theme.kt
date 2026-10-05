@@ -26,6 +26,12 @@ val TextWhite = Color(0xFFFFFFFF)
 val TextGray = Color(0xFF9DA7C1)
 val TextMuted = Color(0xFF6B7280)
 
+// Aliases untuk kompatibilitas layar lain
+val ExpenseRed = KotlinOrange
+val IncomeGreen = KotlinGreen
+val CardSurface = KmpCardBg
+val BackgroundLight = KmpDarkBg
+
 // Brushes Gradasi Khas Kotlin Multiplatform
 val KotlinGradient = Brush.horizontalGradient(
     colors = listOf(KotlinPurple, KotlinMagenta, KotlinOrange)

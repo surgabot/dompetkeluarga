@@ -9,6 +9,7 @@ enum class TransactionType {
 
 enum class TransactionCategory(val displayName: String, val iconName: String) {
     FOOD("Makanan & Kebutuhan Dapur", "restaurant"),
+    GROCERIES("Belanja Bulanan Supermarket", "shopping_cart"),
     EDUCATION("Pendidikan & Sekolah Anak", "school"),
     HEALTH("Kesehatan & Asuransi", "medical_services"),
     INVESTMENT("Alokasi Tabungan Roadmap", "trending_up"),
