@@ -3,46 +3,55 @@ package com.family.financeapp.ui.theme
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
-val GreenPrimary = Color(0xFF00875A)
-val GreenDark = Color(0xFF005A3C)
-val GreenLight = Color(0xFF36B37E)
-val TealAccent = Color(0xFF00B8D9)
-val GoldYellow = Color(0xFFFFAB00)
+// Palet Warna Asli JetBrains / Kotlin Multiplatform (KMP)
+val KmpDarkBg = Color(0xFF0C0E14)          // Latar belakang gelap futuristik KMP
+val KmpCardBg = Color(0xFF161926)          // Kartu elevated KMP
+val KmpCardBorder = Color(0xFF282C40)      // Border garis halus KMP
+val KmpSurfaceAccent = Color(0xFF202436)   // Kontainer elemen dalam kartu
 
-val ExpenseRed = Color(0xFFFF5630)
-val IncomeGreen = Color(0xFF36B37E)
-val CardSurface = Color(0xFFFFFFFF)
-val BackgroundLight = Color(0xFFF7F9FA)
+// Gradasi Khas Kotlin (Violet -> Magenta -> Coral/Orange)
+val KotlinPurple = Color(0xFF7F52FF)       // Warna primer Kotlin
+val KotlinMagenta = Color(0xFFC711E1)      // Warna tengah Kotlin
+val KotlinOrange = Color(0xFFE24A00)       // Warna coral Kotlin
+val KotlinCyan = Color(0xFF27C4F5)         // Cyan neon KMP
+val KotlinGreen = Color(0xFF3CD070)        // Status selesai / tercapai
+val KotlinYellow = Color(0xFFFFB300)       // Status in progress
 
-val SuperAppGradient = Brush.horizontalGradient(
-    colors = listOf(Color(0xFF0052CC), Color(0xFF00875A))
+// Text Colors
+val TextWhite = Color(0xFFFFFFFF)
+val TextGray = Color(0xFF9DA7C1)
+val TextMuted = Color(0xFF6B7280)
+
+// Brushes Gradasi Khas Kotlin Multiplatform
+val KotlinGradient = Brush.horizontalGradient(
+    colors = listOf(KotlinPurple, KotlinMagenta, KotlinOrange)
 )
 
-val WalletCardGradient = Brush.linearGradient(
-    colors = listOf(Color(0xFF0747A6), Color(0xFF00875A), Color(0xFF00B8D9))
+val KotlinCardGlow = Brush.linearGradient(
+    colors = listOf(KotlinPurple.copy(alpha = 0.35f), KotlinMagenta.copy(alpha = 0.15f), Color.Transparent)
 )
 
-val GoldCardGradient = Brush.linearGradient(
-    colors = listOf(Color(0xFFFFAB00), Color(0xFFFF8B00))
+val KotlinButtonGradient = Brush.horizontalGradient(
+    colors = listOf(KotlinPurple, KotlinMagenta)
 )
 
-private val LightColorScheme = lightColorScheme(
-    primary = GreenPrimary,
-    secondary = TealAccent,
-    background = BackgroundLight,
-    surface = CardSurface
+val KmpMilestoneLine = Brush.verticalGradient(
+    colors = listOf(KotlinGreen, KotlinPurple, KotlinMagenta, KotlinCyan, TextMuted)
 )
 
-private val DarkColorScheme = darkColorScheme(
-    primary = GreenLight,
-    secondary = TealAccent,
-    background = Color(0xFF091E42),
-    surface = Color(0xFF172B4D)
+private val KmpColorScheme = darkColorScheme(
+    primary = KotlinPurple,
+    secondary = KotlinCyan,
+    tertiary = KotlinOrange,
+    background = KmpDarkBg,
+    surface = KmpCardBg,
+    onPrimary = TextWhite,
+    onBackground = TextWhite,
+    onSurface = TextWhite
 )
 
 @Composable
@@ -50,10 +59,9 @@ fun FamilyFinanceTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
-
+    // Selalu gunakan tema Dark Futuristik gaya Kotlin Multiplatform
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = KmpColorScheme,
         content = content
     )
 }

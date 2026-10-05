@@ -3,66 +3,113 @@ package com.family.financeapp.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.family.financeapp.data.FinanceRepository
-import com.family.financeapp.model.FamilyGroup
-import com.family.financeapp.model.SavingsPocket
-import com.family.financeapp.model.SplitBill
-import com.family.financeapp.model.Transaction
-import com.family.financeapp.model.TransactionCategory
-import com.family.financeapp.model.TransactionType
-import com.family.financeapp.model.Wallet
+import com.family.financeapp.model.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
-data class DayCashflow(
-    val dayName: String,
-    val expense: Double,
-    val income: Double
-)
-
 data class FinanceUiState(
     val currentUserName: String = "Ayah",
     val familyGroup: FamilyGroup? = FamilyGroup(
         id = "fam_1",
         familyName = "Keluarga Bahagia",
-        inviteCode = "FM8291",
+        inviteCode = "KMP-82",
         monthlyBudget = 8000000.0,
         members = listOf("Ayah", "Ibu", "Anak")
     ),
-    // Fitur Multi-Wallet
+
+    // Skor Kesehatan Finansial Keluarga
+    val financialHealthScore: Int = 82, // 82/100
+    val financialLevel: String = "Level 4: Fase Pertumbuhan Aset",
+
+    // Peta Jalan Finansial Nyata Keluarga (Roadmap Stages)
+    val roadmapMilestones: List<RoadmapMilestone> = listOf(
+        RoadmapMilestone(
+            phaseNumber = 1,
+            title = "Fondasi 1: Dana Darurat 6 Bulan",
+            targetYear = "Selesai 2025",
+            currentAmount = 30000000.0,
+            targetAmount = 30000000.0,
+            status = MilestoneStatus.COMPLETED,
+            iconEmoji = "🛡️",
+            description = "Menyimpan 6x pengeluaran bulanan keluarga untuk antisipasi risiko PHK/sakit mendadak.",
+            actionPlan = "Tersimpan aman di instrumen likuid (Reksadana Pasar Uang / Deposito).",
+            checklist = listOf("6x Biaya Hidup Bulanan Terkumpul", "Instrumen Likuid & Mudah Dicairkan", "Tidak Dipakai untuk Keperluan Konsumtif")
+        ),
+        RoadmapMilestone(
+            phaseNumber = 2,
+            title = "Fondasi 2: Proteksi & Asuransi Kesehatan",
+            targetYear = "Selesai 2025",
+            currentAmount = 5000000.0,
+            targetAmount = 5000000.0,
+            status = MilestoneStatus.COMPLETED,
+            iconEmoji = "🏥",
+            description = "Memastikan seluruh anggota keluarga terlindungi dari risiko biaya rumah sakit besar.",
+            actionPlan = "Premi BPJS & Asuransi Jiwa dibayar otomatis per tahun.",
+            checklist = listOf("BPJS Kesehatan Aktif 3 Anggota", "Asuransi Jiwa Murni untuk Pencari Nafkah", "Plafon Rawat Inap Mencukupi")
+        ),
+        RoadmapMilestone(
+            phaseNumber = 3,
+            title = "Milestone 3: Bebas Hutang Berbunga Tinggi",
+            targetYear = "Selesai 2025",
+            currentAmount = 0.0,
+            targetAmount = 0.0,
+            status = MilestoneStatus.COMPLETED,
+            iconEmoji = "🎉",
+            description = "Nol hutang konsumtif agar arus kas bulanan bebas bernapas tanpa beban bunga.",
+            actionPlan = "Hutang kartu kredit dan paylater resmi lunas 100%.",
+            checklist = listOf("Kartu Kredit Lunas & Bebas Tagihan", "Paylater Dinonaktifkan", "Arus Kas Bulanan Surplus")
+        ),
+        RoadmapMilestone(
+            phaseNumber = 4,
+            title = "Milestone 4: Dana Pendidikan Anak (SD - Kuliah)",
+            targetYear = "Target 2028",
+            currentAmount = 38500000.0,
+            targetAmount = 60000000.0,
+            status = MilestoneStatus.IN_PROGRESS,
+            iconEmoji = "🎓",
+            description = "Mempersiapkan uang pangkal dan biaya pendidikan anak masa depan agar bebas inflasi pendidikan.",
+            actionPlan = "Rutin menabung Rp 1.500.000 / bulan ke instrumen obligasi / reksadana pendapatan tetap.",
+            checklist = listOf("Target Tercapai 64%", "Kebutuhan Biaya Masuk Terhitung", "Alokasi Rutin Tiap Tanggal Gajian")
+        ),
+        RoadmapMilestone(
+            phaseNumber = 5,
+            title = "Milestone 5: Kepemilikan Rumah Idaman / Renovasi",
+            targetYear = "Target 2030",
+            currentAmount = 72000000.0,
+            targetAmount = 150000000.0,
+            status = MilestoneStatus.IN_PROGRESS,
+            iconEmoji = "🏡",
+            description = "Mengumpulkan DP 30% atau biaya renovasi dan pelunasan hunian tetap keluarga.",
+            actionPlan = "Alokasi tabungan surplus keluarga sebesar Rp 2.000.000 / bulan.",
+            checklist = listOf("Target Tercapai 48%", "Survei Lokasi & Legalitas", "Tabungan Terpisah Khusus Properti")
+        ),
+        RoadmapMilestone(
+            phaseNumber = 6,
+            title = "Milestone 6: Dana Pensiun & Kebebasan Finansial",
+            targetYear = "Target 2040",
+            currentAmount = 45000000.0,
+            targetAmount = 500000000.0,
+            status = MilestoneStatus.PLANNED,
+            iconEmoji = "📈",
+            description = "Aset produktif yang menghasilkan penghasilan pasif untuk hari tua mandiri tanpa merepotkan anak.",
+            actionPlan = "Investasi jangka panjang saham indeks & emas.",
+            checklist = listOf("Investasi Jangka Panjang", "Dividen Pasif Mengalir", "Keluarga Mandiri di Hari Tua")
+        )
+    ),
+
+    // Multi-Wallet
     val wallets: List<Wallet> = listOf(
         Wallet("w1", "Kas Harian", 12500000.0, isPrimary = true, iconEmoji = "👛"),
-        Wallet("w2", "Dompet Liburan", 4250000.0, isPrimary = false, iconEmoji = "🏖️"),
-        Wallet("w3", "Dana Darurat", 8000000.0, isPrimary = false, iconEmoji = "🏥")
+        Wallet("w2", "Tabungan Roadmap", 38500000.0, isPrimary = false, iconEmoji = "🎯"),
+        Wallet("w3", "Dana Darurat", 30000000.0, isPrimary = false, iconEmoji = "🛡️")
     ),
     val selectedWalletId: String = "w1",
 
     val transactions: List<Transaction> = emptyList(),
-    val savingsPockets: List<SavingsPocket> = listOf(
-        SavingsPocket("1", "Liburan Akhir Tahun", 5000000.0, 3750000.0, "🏖️"),
-        SavingsPocket("2", "Biaya Kuliah Anak", 12000000.0, 9600000.0, "🎓"),
-        SavingsPocket("3", "Servis Kendaraan & BBM", 1500000.0, 850000.0, "🚗"),
-        SavingsPocket("4", "Dana Darurat Rumah", 10000000.0, 7200000.0, "🏥")
-    ),
-    val splitBills: List<SplitBill> = listOf(
-        SplitBill("1", "Makan Malam Bersama di Resto", 300000.0, listOf("Ayah", "Ibu")),
-        SplitBill("2", "Belanja Bulanan Supermarket", 650000.0, listOf("Ayah", "Ibu"))
-    ),
-
-    // Data Grafik Arus Kas Mingguan
-    val weeklyCashflow: List<DayCashflow> = listOf(
-        DayCashflow("Sen", 120000.0, 500000.0),
-        DayCashflow("Sel", 250000.0, 0.0),
-        DayCashflow("Rab", 80000.0, 0.0),
-        DayCashflow("Kam", 320000.0, 0.0),
-        DayCashflow("Jum", 150000.0, 1500000.0),
-        DayCashflow("Sab", 450000.0, 0.0),
-        DayCashflow("Min", 210000.0, 0.0)
-    ),
-
-    val totalBalance: Double = 12500000.0,
+    val totalBalance: Double = 81000000.0, // Total Aset Bersih Keluarga (Total Net Worth)
     val totalExpense: Double = 1580000.0,
     val totalIncome: Double = 14350000.0,
     val expensesByCategory: Map<TransactionCategory, Double> = emptyMap(),
@@ -131,23 +178,7 @@ class FinanceViewModel(
     }
 
     fun selectWallet(walletId: String) {
-        val selected = _uiState.value.wallets.find { it.id == walletId }
-        _uiState.value = _uiState.value.copy(
-            selectedWalletId = walletId,
-            totalBalance = selected?.balance ?: _uiState.value.totalBalance
-        )
-    }
-
-    fun addSplitBill(title: String, amount: Double, members: List<String>) {
-        val newSplit = SplitBill(
-            id = (System.currentTimeMillis()).toString(),
-            title = title,
-            totalAmount = amount,
-            members = members
-        )
-        _uiState.value = _uiState.value.copy(
-            splitBills = listOf(newSplit) + _uiState.value.splitBills
-        )
+        _uiState.value = _uiState.value.copy(selectedWalletId = walletId)
     }
 
     fun addTransaction(
@@ -201,7 +232,6 @@ class FinanceViewModel(
                         transactions = list,
                         totalIncome = income,
                         totalExpense = expense,
-                        totalBalance = (14350000.0 + income) - (1580000.0 + expense),
                         expensesByCategory = byCat,
                         expensesByMember = byMem
                     )

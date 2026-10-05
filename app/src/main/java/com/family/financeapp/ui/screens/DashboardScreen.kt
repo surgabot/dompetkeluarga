@@ -2,6 +2,7 @@ package com.family.financeapp.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -17,16 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.family.financeapp.model.SavingsPocket
+import com.family.financeapp.model.MilestoneStatus
+import com.family.financeapp.model.RoadmapMilestone
 import com.family.financeapp.model.Transaction
 import com.family.financeapp.model.TransactionType
-import com.family.financeapp.model.Wallet
 import com.family.financeapp.ui.theme.*
-import com.family.financeapp.viewmodel.DayCashflow
 import com.family.financeapp.viewmodel.FinanceUiState
 import java.text.NumberFormat
 import java.util.Locale
@@ -45,160 +44,71 @@ fun DashboardScreen(
     onViewReportClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isBalanceHidden by remember { mutableStateOf(false) }
-    var selectedFilter by remember { mutableStateOf("Semua") }
-    var showScanDialog by remember { mutableStateOf(false) }
-    var showSplitBillDialog by remember { mutableStateOf(false) }
-
-    // Dialog Simulasi Scan Struk OCR & QRIS
-    if (showScanDialog) {
-        AlertDialog(
-            onDismissRequest = { showScanDialog = false },
-            icon = { Icon(Icons.Default.QrCodeScanner, contentDescription = null, tint = GreenPrimary, modifier = Modifier.size(36.dp)) },
-            title = { Text("Smart OCR Struk & QRIS", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("📷 Kamera Siap Memindai Struk...")
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFF0FDF4)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("✨ AI Deteksi Otomatis:", fontWeight = FontWeight.Bold, fontSize = 12.sp, color = GreenPrimary)
-                            Text("Merchant: Superindo Mart", fontSize = 12.sp)
-                            Text("Total: Rp 84.500", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            Text("Kategori Disarankan: Belanja Bulanan", fontSize = 11.sp, color = Color.Gray)
-                        }
-                    }
-                    Text("Otomatis catat pengeluaran tanpa perlu mengetik manual!", fontSize = 11.sp, color = Color.DarkGray)
-                }
-            },
-            confirmButton = {
-                Button(onClick = {
-                    showScanDialog = false
-                    onAddTransactionClick()
-                }) {
-                    Text("Catat Hasil Pindai")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showScanDialog = false }) {
-                    Text("Tutup")
-                }
-            }
-        )
-    }
-
-    // Dialog Kalkulator Split Bill Interaktif
-    if (showSplitBillDialog) {
-        var billAmount by remember { mutableStateOf("300000") }
-        var memberCount by remember { mutableStateOf(3) }
-        val perPerson = (billAmount.toDoubleOrNull() ?: 0.0) / memberCount
-
-        AlertDialog(
-            onDismissRequest = { showSplitBillDialog = false },
-            icon = { Icon(Icons.Default.Groups, contentDescription = null, tint = Color(0xFF0052CC), modifier = Modifier.size(36.dp)) },
-            title = { Text("Kalkulator Patungan (Split Bill)", fontWeight = FontWeight.Bold) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OutlinedTextField(
-                        value = billAmount,
-                        onValueChange = { if (it.all { c -> c.isDigit() }) billAmount = it },
-                        label = { Text("Total Tagihan Bersama (Rp)") },
-                        singleLine = true
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Dibagi untuk:", fontSize = 13.sp)
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { if (memberCount > 2) memberCount-- }) {
-                                Icon(Icons.Default.RemoveCircleOutline, contentDescription = null)
-                            }
-                            Text("$memberCount Orang", fontWeight = FontWeight.Bold)
-                            IconButton(onClick = { if (memberCount < 6) memberCount++ }) {
-                                Icon(Icons.Default.AddCircleOutline, contentDescription = null)
-                            }
-                        }
-                    }
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFEBF8FF)),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text("Hasil Per Orang:", fontSize = 12.sp, color = Color.Gray)
-                            Text(
-                                formatRupiah(perPerson) + " / orang",
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF0052CC)
-                            )
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                Button(onClick = { showSplitBillDialog = false }) {
-                    Text("Selesai")
-                }
-            }
-        )
-    }
+    var expandedMilestoneIndex by remember { mutableStateOf<Int?>(3) } // Default expand Milestone 4 (Pendidikan)
+    var selectedWalletId by remember { mutableStateOf("w1") }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
+                        // Badge Logo Gradient Gaya Kotlin
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(GreenPrimary.copy(alpha = 0.15f)),
+                                .size(36.dp)
+                                .clip(RoundedCornerShape(10.dp))
+                                .background(KotlinGradient),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text("👑", fontSize = 20.sp)
+                            Text("K", color = TextWhite, fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
+                        Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(
-                                    text = uiState.familyGroup?.familyName ?: "Dompet Keluarga",
-                                    fontSize = 16.sp,
-                                    fontWeight = FontWeight.Bold
+                                    text = "ROADMAP KEUANGAN",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = TextWhite,
+                                    letterSpacing = 1.sp
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Icon(Icons.Default.Verified, contentDescription = null, tint = Color(0xFF0052CC), modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(KotlinPurple.copy(alpha = 0.25f))
+                                        .border(1.dp, KotlinPurple.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Text("KMP DARK", color = KotlinCyan, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                }
                             }
                             Text(
-                                text = "Kode: ${uiState.familyGroup?.inviteCode ?: "FM8291"} • Aktif: ${uiState.currentUserName}",
+                                text = "${uiState.familyGroup?.familyName} • Skor: ${uiState.financialHealthScore}/100",
                                 fontSize = 11.sp,
-                                color = Color.Gray
+                                color = TextGray
                             )
                         }
                     }
                 },
                 actions = {
                     IconButton(onClick = onViewReportClick) {
-                        BadgedBox(badge = { Badge { Text("Baru") } }) {
-                            Icon(Icons.Default.Analytics, contentDescription = "Laporan & Grafik")
-                        }
+                        Icon(Icons.Default.Analytics, contentDescription = "Laporan", tint = KotlinCyan)
                     }
                 },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = BackgroundLight)
+                colors = TopAppBarDefaults.topAppBarColors(containerColor = KmpDarkBg)
             )
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onAddTransactionClick,
                 icon = { Icon(Icons.Default.Add, contentDescription = null) },
-                text = { Text("Catat Kas", fontWeight = FontWeight.SemiBold) },
-                containerColor = GreenPrimary,
-                contentColor = Color.White
+                text = { Text("Catat Alokasi Kas", fontWeight = FontWeight.Bold) },
+                containerColor = KotlinPurple,
+                contentColor = TextWhite
             )
-        }
+        },
+        containerColor = KmpDarkBg
     ) { padding ->
         LazyColumn(
             modifier = modifier
@@ -207,37 +117,18 @@ fun DashboardScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 1. MULTI-WALLET SELECTOR (Dompet Harian, Dompet Liburan, Dana Darurat)
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Pilih Dompet:", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.Gray)
-                }
-                Spacer(modifier = Modifier.height(4.dp))
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(uiState.wallets) { wallet ->
-                        FilterChip(
-                            selected = wallet.id == uiState.selectedWalletId,
-                            onClick = { onSelectWallet(wallet.id) },
-                            label = { Text("${wallet.iconEmoji} ${wallet.name}") }
-                        )
-                    }
-                }
-            }
-
-            // 2. KARTU SALDO SUPER-APP GRADIENT
+            // 1. HERO CARD: KESEHATAN FINANSIAL & NET WORTH KELUARGA (GAYA KMP)
             item {
                 Card(
                     shape = RoundedCornerShape(24.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    colors = CardDefaults.cardColors(containerColor = KmpCardBg),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, KmpCardBorder, RoundedCornerShape(24.dp))
                 ) {
                     Box(
                         modifier = Modifier
-                            .background(WalletCardGradient)
+                            .background(KotlinCardGlow)
                             .padding(20.dp)
                     ) {
                         Column {
@@ -246,122 +137,57 @@ fun DashboardScreen(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Text(
-                                        text = "${uiState.activeWallet.iconEmoji} ${uiState.activeWallet.name}",
-                                        color = Color.White.copy(alpha = 0.85f),
-                                        fontSize = 13.sp
-                                    )
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    IconButton(
-                                        onClick = { isBalanceHidden = !isBalanceHidden },
-                                        modifier = Modifier.size(24.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isBalanceHidden) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                            contentDescription = null,
-                                            tint = Color.White.copy(alpha = 0.85f),
-                                            modifier = Modifier.size(16.dp)
-                                        )
-                                    }
+                                Column {
+                                    Text("STATUS KEUANGAN KELUARGA", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = KotlinCyan, letterSpacing = 1.sp)
+                                    Text(uiState.financialLevel, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextWhite)
                                 }
-                                Surface(
-                                    color = Color.White.copy(alpha = 0.2f),
-                                    shape = RoundedCornerShape(20.dp)
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(20.dp))
+                                        .background(KotlinGreen.copy(alpha = 0.2f))
+                                        .border(1.dp, KotlinGreen, RoundedCornerShape(20.dp))
+                                        .padding(horizontal = 10.dp, vertical = 4.dp)
                                 ) {
-                                    Text(
-                                        text = "★ Platinum",
-                                        color = Color.White,
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                                    )
+                                    Text("Skor Sehat: 82%", color = KotlinGreen, fontSize = 11.sp, fontWeight = FontWeight.Bold)
                                 }
                             }
 
+                            Spacer(modifier = Modifier.height(14.dp))
+
+                            Text("Total Aset Bersih Keluarga (Net Worth):", fontSize = 12.sp, color = TextGray)
                             Text(
-                                text = if (isBalanceHidden) "Rp •••••••••" else formatRupiah(uiState.activeWallet.balance),
-                                color = Color.White,
+                                text = formatRupiah(uiState.totalBalance),
                                 fontSize = 28.sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(vertical = 6.dp)
+                                fontWeight = FontWeight.Black,
+                                color = TextWhite
                             )
 
-                            Divider(color = Color.White.copy(alpha = 0.2f), thickness = 1.dp, modifier = Modifier.padding(vertical = 10.dp))
+                            Spacer(modifier = Modifier.height(14.dp))
 
-                            // 4 Tombol Aksi Cepat
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                QuickActionButton(
-                                    icon = Icons.Default.QrCodeScanner,
-                                    label = "Scan Struk",
-                                    onClick = { showScanDialog = true }
-                                )
-                                QuickActionButton(
-                                    icon = Icons.Default.Send,
-                                    label = "Kirim Uang",
-                                    onClick = onAddTransactionClick
-                                )
-                                QuickActionButton(
-                                    icon = Icons.Default.Groups,
-                                    label = "Split Bill",
-                                    onClick = { showSplitBillDialog = true }
-                                )
-                                QuickActionButton(
-                                    icon = Icons.Default.RequestPage,
-                                    label = "Minta Dana",
-                                    onClick = onAddTransactionClick
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            // 3. GRAFIK VISUAL ARUS KAS MINGGUAN (NATIVE COMPOSE CHART)
-            item {
-                Card(
-                    shape = RoundedCornerShape(20.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text("Tren Arus Kas (7 Hari)", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                            Text("Senin - Minggu", fontSize = 11.sp, color = Color.Gray)
-                        }
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(110.dp),
-                            horizontalArrangement = Arrangement.SpaceEvenly,
-                            verticalAlignment = Alignment.Bottom
-                        ) {
-                            uiState.weeklyCashflow.forEach { day ->
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.Bottom,
-                                    modifier = Modifier.fillMaxHeight()
+                            // Overall Progress Bar Roadmap (3 dari 6 selesai)
+                            Column {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
                                 ) {
-                                    val heightFraction = (day.expense / 500000.0).toFloat().coerceIn(0.1f, 1f)
+                                    Text("Kemajuan Peta Jalan Hidup", fontSize = 11.sp, color = TextGray)
+                                    Text("3 dari 6 Tahap Selesai (50%)", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = KotlinOrange)
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(KmpSurfaceAccent)
+                                ) {
                                     Box(
                                         modifier = Modifier
-                                            .width(18.dp)
-                                            .fillMaxHeight(heightFraction)
-                                            .clip(RoundedCornerShape(6.dp))
-                                            .background(
-                                                if (day.income > 0) GreenPrimary else ExpenseRed.copy(alpha = 0.75f)
-                                            )
+                                            .fillMaxWidth(0.5f)
+                                            .fillMaxHeight()
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(KotlinGradient)
                                     )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(day.dayName, fontSize = 10.sp, color = Color.Gray)
                                 }
                             }
                         }
@@ -369,155 +195,256 @@ fun DashboardScreen(
                 }
             }
 
-            // 4. KANTONG IMPIAN / CELENGAN DIGITAL BERSAMA
+            // 2. DOMPET KAS OPERASIONAL KELUARGA
             item {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Kantong Impian Bersama 🎯", fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                    Text("Kelola (${uiState.savingsPockets.size})", fontSize = 12.sp, color = Color(0xFF0052CC), fontWeight = FontWeight.SemiBold)
-                }
-            }
-
-            item {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    contentPadding = PaddingValues(vertical = 4.dp)
-                ) {
-                    items(uiState.savingsPockets) { pocket ->
-                        SavingsPocketCard(pocket = pocket)
-                    }
-                }
-            }
-
-            // 5. RIWAYAT TRANSAKSI TERBARU DENGAN FILTER CHIP
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Aktivitas Transaksi", fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text("PILIHAN DOMPET KAS", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextGray, letterSpacing = 1.sp)
                 }
                 Spacer(modifier = Modifier.height(6.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf("Semua", "Pengeluaran", "Pemasukan").forEach { filter ->
-                        FilterChip(
-                            selected = selectedFilter == filter,
-                            onClick = { selectedFilter = filter },
-                            label = { Text(filter, fontSize = 12.sp) }
-                        )
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    items(uiState.wallets) { wallet ->
+                        val isSelected = wallet.id == selectedWalletId
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = if (isSelected) KmpSurfaceAccent else KmpCardBg
+                            ),
+                            modifier = Modifier
+                                .clickable {
+                                    selectedWalletId = wallet.id
+                                    onSelectWallet(wallet.id)
+                                }
+                                .border(
+                                    width = if (isSelected) 1.5.dp else 1.dp,
+                                    color = if (isSelected) KotlinPurple else KmpCardBorder,
+                                    shape = RoundedCornerShape(14.dp)
+                                )
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                                Text("${wallet.iconEmoji} ${wallet.name}", fontSize = 12.sp, color = if (isSelected) TextWhite else TextGray, fontWeight = FontWeight.Medium)
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(formatRupiah(wallet.balance), fontSize = 14.sp, fontWeight = FontWeight.Bold, color = if (isSelected) KotlinCyan else TextWhite)
+                            }
+                        }
                     }
                 }
             }
 
-            val filteredList = uiState.transactions.filter {
-                when (selectedFilter) {
-                    "Pengeluaran" -> it.type == TransactionType.EXPENSE
-                    "Pemasukan" -> it.type == TransactionType.INCOME
-                    else -> true
+            // 3. HEADER ROADMAP TIMELINE
+            item {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("PETA JALAN FINANSIAL KELUARGA", fontSize = 13.sp, fontWeight = FontWeight.ExtraBold, color = TextWhite, letterSpacing = 0.5.sp)
+                        Text("Target nyata masa depan keluarga dari fondasi hingga pensiun", fontSize = 11.sp, color = TextGray)
+                    }
                 }
             }
 
-            if (filteredList.isEmpty()) {
+            // 4. TIMELINE CHECKPOINT CARD (THE REAL FAMILY ROADMAP)
+            items(uiState.roadmapMilestones.mapIndexed { index, m -> Pair(index, m) }) { (index, milestone) ->
+                val isExpanded = expandedMilestoneIndex == index
+
+                RoadmapMilestoneCard(
+                    milestone = milestone,
+                    isExpanded = isExpanded,
+                    onToggleExpand = {
+                        expandedMilestoneIndex = if (isExpanded) null else index
+                    }
+                )
+            }
+
+            // 5. RIWAYAT ARUS KAS TERAKHIR
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("AKTIVITAS KAS & ALOKASI TERAKHIR", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextGray, letterSpacing = 1.sp)
+            }
+
+            if (uiState.transactions.isEmpty()) {
                 item {
                     Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White),
-                        modifier = Modifier.fillMaxWidth()
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = KmpCardBg),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, KmpCardBorder, RoundedCornerShape(14.dp))
                     ) {
                         Box(modifier = Modifier.padding(24.dp), contentAlignment = Alignment.Center) {
-                            Text("Belum ada riwayat di kategori ini", color = Color.Gray, fontSize = 12.sp)
+                            Text("Belum ada alokasi baru. Tekan tombol (+) di bawah untuk mencatat pengeluaran atau tabungan!", color = TextGray, fontSize = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                         }
                     }
                 }
             } else {
-                items(filteredList) { tx ->
-                    MarketplaceTransactionItem(tx = tx)
+                items(uiState.transactions) { tx ->
+                    KmpTransactionItem(tx = tx)
                 }
             }
 
             item {
-                Spacer(modifier = Modifier.height(72.dp))
+                Spacer(modifier = Modifier.height(80.dp))
             }
         }
     }
 }
 
+// Komponen Kartu Tahapan Roadmap (Gaya Desain Kotlin Multiplatform)
 @Composable
-fun QuickActionButton(
-    icon: ImageVector,
-    label: String,
-    onClick: () -> Unit
+fun RoadmapMilestoneCard(
+    milestone: RoadmapMilestone,
+    isExpanded: Boolean,
+    onToggleExpand: () -> Unit
 ) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable { onClick() }
-    ) {
-        Box(
-            modifier = Modifier
-                .size(46.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.22f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(imageVector = icon, contentDescription = label, tint = Color.White, modifier = Modifier.size(22.dp))
-        }
-        Spacer(modifier = Modifier.height(6.dp))
-        Text(text = label, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+    val borderColor = when (milestone.status) {
+        MilestoneStatus.COMPLETED -> KotlinGreen.copy(alpha = 0.6f)
+        MilestoneStatus.IN_PROGRESS -> KotlinPurple
+        MilestoneStatus.PLANNED -> KmpCardBorder
     }
-}
 
-@Composable
-fun SavingsPocketCard(pocket: SavingsPocket) {
+    val badgeColor = when (milestone.status) {
+        MilestoneStatus.COMPLETED -> KotlinGreen
+        MilestoneStatus.IN_PROGRESS -> KotlinOrange
+        MilestoneStatus.PLANNED -> TextMuted
+    }
+
     Card(
         shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        modifier = Modifier.width(180.dp)
+        colors = CardDefaults.cardColors(containerColor = KmpCardBg),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onToggleExpand() }
+            .border(1.dp, borderColor, RoundedCornerShape(18.dp))
     ) {
-        Column(modifier = Modifier.padding(14.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            // Header Baris: Emoji + Judul + Status Badge
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(pocket.emoji, fontSize = 24.sp)
-                Text(
-                    text = "${(pocket.progress * 100).toInt()}%",
-                    fontWeight = FontWeight.Bold,
-                    color = GreenPrimary,
-                    fontSize = 12.sp
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(CircleShape)
+                            .background(KmpSurfaceAccent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(milestone.iconEmoji, fontSize = 20.sp)
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(milestone.title, fontWeight = FontWeight.Bold, fontSize = 13.sp, color = TextWhite)
+                        Text(milestone.targetYear, fontSize = 11.sp, color = TextGray)
+                    }
+                }
+
+                // Status Chip
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(badgeColor.copy(alpha = 0.15f))
+                        .border(1.dp, badgeColor.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(milestone.status.label, color = badgeColor, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                }
             }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(text = pocket.title, fontWeight = FontWeight.Bold, fontSize = 13.sp, maxLines = 1)
-            Text(text = formatRupiah(pocket.currentAmount), fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = Color.DarkGray)
-            Spacer(modifier = Modifier.height(8.dp))
-            LinearProgressIndicator(
-                progress = pocket.progress,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(3.dp)),
-                color = GreenPrimary,
-                trackColor = Color(0xFFE0E0E0)
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(text = "Target: " + formatRupiah(pocket.targetAmount), fontSize = 10.sp, color = Color.Gray)
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Progress Bar Jika Ada Target Nominal
+            if (milestone.targetAmount > 0) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Terkumpul: ${formatRupiah(milestone.currentAmount)}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (milestone.status == MilestoneStatus.COMPLETED) KotlinGreen else TextWhite
+                    )
+                    Text(
+                        text = "Target: ${formatRupiah(milestone.targetAmount)} (${(milestone.progress * 100).toInt()}%)",
+                        fontSize = 11.sp,
+                        color = TextGray
+                    )
+                }
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(KmpSurfaceAccent)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(milestone.progress)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(
+                                if (milestone.status == MilestoneStatus.COMPLETED) KotlinGreen
+                                else KotlinGradient
+                            )
+                    )
+                }
+            }
+
+            // Keterangan & Checklist (Bisa Di-expand)
+            AnimatedVisibility(visible = isExpanded) {
+                Column(modifier = Modifier.padding(top = 14.dp)) {
+                    HorizontalDivider(color = KmpCardBorder, thickness = 1.dp)
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text("Tujuan Nyata:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = KotlinCyan)
+                    Text(milestone.description, fontSize = 12.sp, color = TextGray, lineHeight = 16.sp)
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text("Rencana Aksi Keluarga:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = KotlinOrange)
+                    Text(milestone.actionPlan, fontSize = 12.sp, color = TextGray, lineHeight = 16.sp)
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text("Indikator Keberhasilan:", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextWhite)
+                    milestone.checklist.forEach { item ->
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (milestone.status == MilestoneStatus.COMPLETED) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                                contentDescription = null,
+                                tint = if (milestone.status == MilestoneStatus.COMPLETED) KotlinGreen else KotlinPurple,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(item, fontSize = 11.sp, color = TextGray)
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
+// Item Transaksi dengan Gaya KMP Dark
 @Composable
-fun MarketplaceTransactionItem(tx: Transaction) {
+fun KmpTransactionItem(tx: Transaction) {
     Card(
         shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        modifier = Modifier.fillMaxWidth()
+        colors = CardDefaults.cardColors(containerColor = KmpCardBg),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, KmpCardBorder, RoundedCornerShape(14.dp))
     ) {
         Row(
             modifier = Modifier
@@ -527,49 +454,45 @@ fun MarketplaceTransactionItem(tx: Transaction) {
         ) {
             Box(
                 modifier = Modifier
-                    .size(44.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .size(40.dp)
+                    .clip(RoundedCornerShape(10.dp))
                     .background(
-                        if (tx.type == TransactionType.INCOME) Color(0xFFE3FCEF)
-                        else Color(0xFFFFEBE6)
+                        if (tx.type == TransactionType.INCOME) KotlinGreen.copy(alpha = 0.15f)
+                        else KotlinOrange.copy(alpha = 0.15f)
                     ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = if (tx.type == TransactionType.INCOME) Icons.Default.Savings else Icons.Default.ShoppingBag,
+                    imageVector = if (tx.type == TransactionType.INCOME) Icons.Default.ArrowDownward else Icons.Default.ArrowUpward,
                     contentDescription = null,
-                    tint = if (tx.type == TransactionType.INCOME) IncomeGreen else ExpenseRed,
-                    modifier = Modifier.size(22.dp)
+                    tint = if (tx.type == TransactionType.INCOME) KotlinGreen else KotlinOrange,
+                    modifier = Modifier.size(20.dp)
                 )
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = tx.title, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(tx.title, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = TextWhite)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Surface(
-                        color = Color(0xFFEBECF0),
-                        shape = RoundedCornerShape(4.dp)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(KmpSurfaceAccent)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
                     ) {
-                        Text(
-                            text = tx.recordedBy.ifBlank { "Keluarga" },
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color.DarkGray,
-                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                        )
+                        Text(tx.recordedBy.ifBlank { "Keluarga" }, fontSize = 10.sp, color = TextGray)
                     }
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = tx.category.displayName, fontSize = 11.sp, color = Color.Gray)
+                    Text(tx.category.displayName, fontSize = 11.sp, color = TextMuted)
                 }
             }
 
             Text(
                 text = (if (tx.type == TransactionType.INCOME) "+ " else "- ") + formatRupiah(tx.amount),
-                fontSize = 14.sp,
+                fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
-                color = if (tx.type == TransactionType.INCOME) IncomeGreen else ExpenseRed
+                color = if (tx.type == TransactionType.INCOME) KotlinGreen else KotlinOrange
             )
         }
     }

@@ -8,18 +8,42 @@ enum class TransactionType {
 }
 
 enum class TransactionCategory(val displayName: String, val iconName: String) {
-    FOOD("Makanan & Minuman", "restaurant"),
-    EDUCATION("Pendidikan & Sekolah", "school"),
-    GROCERIES("Belanja Bulanan", "shopping_cart"),
-    TRANSPORT("Transportasi & Bensin", "directions_car"),
-    HEALTH("Kesehatan & Obat", "medical_services"),
-    ENTERTAINMENT("Hiburan & Jajan", "movie"),
+    FOOD("Makanan & Kebutuhan Dapur", "restaurant"),
+    EDUCATION("Pendidikan & Sekolah Anak", "school"),
+    HEALTH("Kesehatan & Asuransi", "medical_services"),
+    INVESTMENT("Alokasi Tabungan Roadmap", "trending_up"),
     BILLS("Listrik, Air & Internet", "receipt_long"),
-    SALARY("Gaji & Bonus", "payments"),
+    TRANSPORT("Transportasi & Kendaraan", "directions_car"),
+    ENTERTAINMENT("Hiburan & Healing", "movie"),
+    SALARY("Gaji & Sumber Pemasukan", "payments"),
     OTHER("Lainnya", "category")
 }
 
-// 1. Model Multi-Wallet (Banyak Dompet dalam 1 Keluarga)
+// Status Tahapan Roadmap
+enum class MilestoneStatus(val label: String) {
+    COMPLETED("Tercapai ✓"),
+    IN_PROGRESS("Sedang Berjalan ⚡"),
+    PLANNED("Tahap Berikutnya 🔒")
+}
+
+// Model Peta Jalan Finansial Keluarga (Family Financial Roadmap)
+data class RoadmapMilestone(
+    val phaseNumber: Int,
+    val title: String,
+    val targetYear: String,
+    val currentAmount: Double,
+    val targetAmount: Double,
+    val status: MilestoneStatus,
+    val iconEmoji: String,
+    val description: String,
+    val actionPlan: String,
+    val checklist: List<String>
+) {
+    val progress: Float
+        get() = if (targetAmount > 0) (currentAmount / targetAmount).toFloat().coerceIn(0f, 1f) else 1f
+}
+
+// Dompet Alokasi
 data class Wallet(
     val id: String = "",
     val name: String = "",
@@ -28,7 +52,7 @@ data class Wallet(
     val iconEmoji: String = "👛"
 )
 
-// 2. Model Transaksi
+// Catatan Transaksi
 data class Transaction(
     val id: String = "",
     val walletId: String = "w1",
@@ -37,35 +61,11 @@ data class Transaction(
     val type: TransactionType = TransactionType.EXPENSE,
     val category: TransactionCategory = TransactionCategory.OTHER,
     val note: String = "",
-    val recordedBy: String = "", // e.g. "Ayah", "Ibu", "Anak"
+    val recordedBy: String = "",
     val timestamp: Timestamp = Timestamp.now()
 )
 
-// 3. Model Kantong Impian / Celengan Digital
-data class SavingsPocket(
-    val id: String = "",
-    val title: String = "",
-    val targetAmount: Double = 0.0,
-    val currentAmount: Double = 0.0,
-    val emoji: String = "🎯"
-) {
-    val progress: Float
-        get() = if (targetAmount > 0) (currentAmount / targetAmount).toFloat().coerceIn(0f, 1f) else 0f
-}
-
-// 4. Model Patungan (Split Bill)
-data class SplitBill(
-    val id: String = "",
-    val title: String = "",
-    val totalAmount: Double = 0.0,
-    val members: List<String> = emptyList(),
-    val isSettled: Boolean = false
-) {
-    val amountPerPerson: Double
-        get() = if (members.isNotEmpty()) totalAmount / members.size else 0.0
-}
-
-// 5. Model Keluarga
+// Grup Keluarga
 data class FamilyGroup(
     val id: String = "",
     val familyName: String = "",
