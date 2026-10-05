@@ -86,6 +86,10 @@ class FinanceViewModel(
         listenToTransactions("fam_1")
     }
 
+    fun setBiometricUnlocked(unlocked: Boolean) {
+        _uiState.value = _uiState.value.copy(isBiometricUnlocked = unlocked)
+    }
+
     fun selectWallet(walletId: String) {
         val selected = _uiState.value.wallets.find { it.id == walletId }
         _uiState.value = _uiState.value.copy(
